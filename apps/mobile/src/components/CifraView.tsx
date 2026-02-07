@@ -155,11 +155,15 @@ function isJunkScrapeLine(line: string) {
   const normalized = compactNormalize(trimmed);
 
   // Credits block (we extract and render separately).
-  if (normalized.startsWith('composicaode')) return true;
+  if (normalized.startsWith('composicao')) return true;
   if (normalized.startsWith('colaboracaoerevisao')) return true;
 
   // Views line: "11.258.341 exibições"
   if (/^\d+(?:\.\d+)*exibicoes$/u.test(normalized)) return true;
+
+  // Never show scraped source URLs in the app.
+  if (/https?:\/\//iu.test(trimmed)) return true;
+  if (/cifraclub\.com|letras\.mus\.br|palcomp3/iu.test(trimmed)) return true;
 
   // UI leftovers from the scraped page.
   const exact = new Set([
@@ -201,7 +205,7 @@ function parseCredits(lines: string[]) {
   const blob = lines.join('\n');
   const compact = blob.replace(/\s+/g, ' ').trim();
 
-  const composerMatch = compact.match(/Composi(?:c|ç)ão de\s+(.+?)(?:\.|\n|$)/iu);
+  const composerMatch = compact.match(/Composi(?:c|ç)ão(?:\s+de|\s*:)\s+(.+?)(?:\.|\n|$)/iu);
   const composersRaw = composerMatch?.[1]?.trim() ?? '';
   const composers = composersRaw
     ? composersRaw
@@ -214,6 +218,18 @@ function parseCredits(lines: string[]) {
   const reviewers: string[] = [];
   const startIndex = lines.findIndex((line) => compactNormalize(line).startsWith('colaboracaoerevisao'));
   if (startIndex !== -1) {
+    // Support single-line format: "Colaboração e revisão: Fulano, Sicrano"
+    const inline = String(lines[startIndex] ?? '');
+    const inlineParts = inline.split(/:\s*/u);
+    if (inlineParts.length >= 2) {
+      const restInline = inlineParts.slice(1).join(':').trim();
+      if (restInline) {
+        for (const part of restInline.split(/\s*\/\s*|\s*,\s*/u).map((name) => name.trim()).filter(Boolean)) {
+          reviewers.push(part);
+        }
+      }
+    }
+
     for (let i = startIndex + 1; i < lines.length; i += 1) {
       const raw = lines[i] ?? '';
       const value = raw.trim().replace(/\s+/g, ' ');
@@ -928,21 +944,20 @@ export default function CifraView({
         </TouchableOpacity>
       </View>
 
-      <PinchGestureHandler onHandlerStateChange={onPinchStateChange} onGestureEvent={onPinchGestureEvent}>
-        <View style={{ flex: 1 }}>
-          <ScrollView
-            ref={scrollRef}
-            style={styles.scroll}
-            contentContainerStyle={{
-              paddingTop: insets.top + 56,
-              paddingBottom: insets.bottom + 160
-            }}
-            onScroll={(event) => {
-              scrollY.current = event.nativeEvent.contentOffset.y;
-            }}
-            scrollEventThrottle={16}
-          >
-            <View style={styles.header}>
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          ref={scrollRef}
+          style={styles.scroll}
+          contentContainerStyle={{
+            paddingTop: insets.top + 56,
+            paddingBottom: insets.bottom + 160
+          }}
+          onScroll={(event) => {
+            scrollY.current = event.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
+        >
+          <View style={styles.header}>
           <View style={styles.titleRow}>
             <View style={{ flex: 1, gap: 6 }}>
               <View style={styles.titleLine}>
@@ -1016,6 +1031,50 @@ export default function CifraView({
             </TouchableOpacity>
           </ScrollView>
 
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.instrumentRowScroll}
+            contentContainerStyle={styles.instrumentRow}
+          >
+            {INSTRUMENTS.map((label) => {
+              const supported = SUPPORTED_INSTRUMENTS.has(label);
+              const active = instrument === label;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  style={[
+                    styles.instrumentPill,
+                    active ? styles.instrumentPillActive : null,
+                    !supported ? styles.instrumentPillDisabled : null
+                  ]}
+                  onPress={() => {
+                    if (!supported) {
+                      Alert.alert('Em breve', `${label} será adicionado em breve.`);
+                      return;
+                    }
+                    setInstrument(label);
+                    setShowDiagrams(true);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={
+                      !supported
+                        ? styles.instrumentTextDisabled
+                        : active
+                          ? styles.instrumentTextActive
+                          : styles.instrumentText
+                    }
+                    numberOfLines={1}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
           {showDiagrams ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chordsRow}>
               {chordsTop.map((chord) => (
@@ -1070,7 +1129,9 @@ export default function CifraView({
           ) : null}
         </View>
 
-        <View style={styles.sheet}>
+        <PinchGestureHandler onHandlerStateChange={onPinchStateChange} onGestureEvent={onPinchGestureEvent}>
+          <View>
+            <View style={styles.sheet}>
           {(() => {
             const rendered: any[] = [];
             const baseFontSize = Math.round(18 * fontScale);
@@ -1215,28 +1276,30 @@ export default function CifraView({
 
             return rendered;
           })()}
-        </View>
+            </View>
 
-        {composers.length || reviewers.length ? (
-          <View style={styles.credits}>
-            {composers.length ? (
-              <View style={{ gap: 6 }}>
-                <Text style={styles.creditLabel}>Composição</Text>
-                <Text style={styles.creditValue}>{composers.join(', ')}</Text>
-              </View>
-            ) : null}
-            {reviewers.length ? (
-              <View style={{ gap: 6 }}>
-                <Text style={styles.creditLabel}>Colaboração e revisão</Text>
-                <Text style={styles.creditValue}>
-                  {reviewers.length <= 4
-                    ? reviewers.join(', ')
-                    : `${reviewers.slice(0, 3).join(', ')} e mais ${reviewers.length - 3}`}
-                </Text>
+            {composers.length || reviewers.length ? (
+              <View style={styles.credits}>
+                {composers.length ? (
+                  <View style={{ gap: 6 }}>
+                    <Text style={styles.creditLabel}>Composição</Text>
+                    <Text style={styles.creditValue}>{composers.join(', ')}</Text>
+                  </View>
+                ) : null}
+                {reviewers.length ? (
+                  <View style={{ gap: 6 }}>
+                    <Text style={styles.creditLabel}>Colaboração e revisão</Text>
+                    <Text style={styles.creditValue}>
+                      {reviewers.length <= 4
+                        ? reviewers.join(', ')
+                        : `${reviewers.slice(0, 3).join(', ')} e mais ${reviewers.length - 3}`}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </View>
-        ) : null}
+        </PinchGestureHandler>
 
         <View style={styles.actionCards}>
           <View style={styles.actionCard}>
@@ -1270,9 +1333,8 @@ export default function CifraView({
             <Text style={styles.metaChipText}>Capo: {capoLabel}</Text>
           </View>
         </View>
-      </ScrollView>
-        </View>
-      </PinchGestureHandler>
+        </ScrollView>
+      </View>
 
       {autoScroll ? (
         <View style={[styles.speedPill, { bottom: insets.bottom + 92 }]}>
@@ -2085,9 +2147,30 @@ const styles = StyleSheet.create({
   },
   modeMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 
+  instrumentRowScroll: { marginTop: 10, paddingLeft: 16 },
+  instrumentRow: { paddingRight: 16, gap: 8, alignItems: 'center', flexDirection: 'row' },
+  instrumentPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: radii.pill,
+    backgroundColor: '#f2f2f2',
+    maxWidth: 160
+  },
+  instrumentPillActive: {
+    backgroundColor: colors.accentSoft,
+    borderWidth: 1,
+    borderColor: colors.accent
+  },
+  instrumentPillDisabled: {
+    opacity: 0.45
+  },
+  instrumentText: { fontWeight: '800', color: colors.text, fontSize: 12 },
+  instrumentTextActive: { fontWeight: '900', color: colors.accent, fontSize: 12 },
+  instrumentTextDisabled: { fontWeight: '800', color: colors.muted, fontSize: 12 },
+
   chordsRow: { marginTop: 8, paddingLeft: 16 },
   chordCard: {
-    width: 120,
+    width: 112,
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderRadius: 16,
@@ -2101,17 +2184,17 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontWeight: '900',
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: 'center'
   },
-  chordCardDiagram: { alignItems: 'center', justifyContent: 'center' },
+  chordCardDiagram: { height: 92, alignItems: 'center', justifyContent: 'center' },
   keyboardNotes: {
     color: colors.text,
     fontWeight: '800',
     fontSize: 12,
     lineHeight: 16,
     textAlign: 'center',
-    paddingVertical: 14,
+    paddingVertical: 0,
     paddingHorizontal: 6
   },
 

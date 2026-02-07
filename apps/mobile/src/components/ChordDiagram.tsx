@@ -118,6 +118,7 @@ export default function ChordDiagram({
   }
 
   const cfg = getConfig(variant);
+  const showCapoBoxes = variant === 'modal';
   const positions = leftHanded ? [...shape.positions].reverse() : shape.positions;
   const fingers = shape.fingers ? (leftHanded ? [...shape.fingers].reverse() : shape.fingers) : undefined;
   const stringCount = positions.length;
@@ -135,14 +136,24 @@ export default function ChordDiagram({
   const openRowY = stringsTop + stringsHeight + cfg.bottomOffset;
 
   return (
-    <View style={[styles.wrapper, { width: gridWidth, height: gridHeight + cfg.capoBox + 10 }]}>
-      <View style={[styles.capoRow, { height: cfg.capoBox + 6 }]}> 
-        {'CAPO'.split('').map((char) => (
-          <View key={char} style={[styles.capoBox, { width: cfg.capoBox, height: cfg.capoBox }]}>
-            <Text style={styles.capoBoxText}>{char}</Text>
-          </View>
-        ))}
-      </View>
+    <View
+      style={[
+        styles.wrapper,
+        {
+          width: gridWidth,
+          height: gridHeight + (showCapoBoxes ? cfg.capoBox + 10 : 0)
+        }
+      ]}
+    >
+      {showCapoBoxes ? (
+        <View style={[styles.capoRow, { height: cfg.capoBox + 6 }]}>
+          {'CAPO'.split('').map((char) => (
+            <View key={char} style={[styles.capoBox, { width: cfg.capoBox, height: cfg.capoBox }]}>
+              <Text style={styles.capoBoxText}>{char}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <View style={[styles.grid, { width: gridWidth, height: gridHeight }]}>
         {baseLabel ? (
