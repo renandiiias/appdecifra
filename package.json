@@ -1,0 +1,22 @@
+{
+  "name": "cifras-mvp",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "corepack pnpm --filter @cifras/web dev",
+    "dev:mobile": "corepack pnpm --filter @cifras/mobile start",
+    "dev:mobile:clear": "corepack pnpm --filter @cifras/mobile start:clear",
+    "dev:mobile:tunnel": "corepack pnpm --filter @cifras/mobile start:tunnel",
+    "dev:mobile:tunnel:clear": "corepack pnpm --filter @cifras/mobile start:clear:tunnel",
+    "test": "corepack pnpm --filter @cifras/shared test",
+    "import:txt": "node scripts/import-local-txt.mjs",
+    "import:export:one": "node scripts/import-supabase-export-one.mjs"
+  },
+  "devDependencies": {
+    "csv-parse": "^6.1.0"
+  }
+}
