@@ -416,8 +416,8 @@ export default function CifraView({
   const soundingKey = capoValue ? transposeChord(shapeKey, capoValue) : shapeKey;
   const artistName = song.artists?.name ?? 'Artista';
   const originalIsMinor = isMinorKey(song.original_key);
-  const diagramSize: 'sm' | 'md' = 'sm';
-  const diagramSizeModal: 'sm' | 'md' = 'md';
+  const diagramVariant: 'inline' | 'modal' = 'inline';
+  const diagramVariantModal: 'inline' | 'modal' = 'modal';
 
   const textSizePercent = Math.round(fontScale * 100);
   const capoLabel = capoValue ? `${capoValue}ª casa` : 'Sem capo';
@@ -945,7 +945,7 @@ export default function CifraView({
                     {chord}
                   </Text>
                   <View style={styles.chordCardDiagram}>
-                    <ChordDiagram chord={chord} leftHanded={leftHanded} size={diagramSize} />
+                    <ChordDiagram chord={chord} leftHanded={leftHanded} variant={diagramVariant} />
                   </View>
                 </TouchableOpacity>
               ))}
@@ -1856,7 +1856,7 @@ export default function CifraView({
           <Pressable style={styles.chordModal} onPress={() => {}}>
             <Text style={styles.chordModalTitle}>{selectedChord}</Text>
             {selectedChord ? (
-              <ChordDiagram chord={selectedChord} leftHanded={leftHanded} size={diagramSizeModal} />
+              <ChordDiagram chord={selectedChord} leftHanded={leftHanded} variant={diagramVariantModal} />
             ) : null}
             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedChord(null)}>
               <Text style={styles.closeButtonText}>Fechar</Text>
@@ -1973,24 +1973,23 @@ const styles = StyleSheet.create({
   },
   modeMoreRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 
-  chordsRow: { marginTop: 12, paddingLeft: 16 },
+  chordsRow: { marginTop: 8, paddingLeft: 16 },
   chordCard: {
-    width: 152,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    backgroundColor: colors.card,
+    width: 120,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: colors.border,
-    marginRight: 12,
-    alignItems: 'center',
-    ...shadows.card
+    marginRight: 10,
+    alignItems: 'center'
   },
   chordCardTitle: {
     color: colors.accent,
     fontWeight: '900',
-    fontSize: 18,
-    marginBottom: 10,
+    fontSize: 14,
+    marginBottom: 6,
     textAlign: 'center'
   },
   chordCardDiagram: { alignItems: 'center', justifyContent: 'center' },

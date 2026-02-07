@@ -14,7 +14,8 @@
     "dev:mobile:tunnel:clear": "corepack pnpm --filter @cifras/mobile start:clear:tunnel",
     "test": "corepack pnpm --filter @cifras/shared test",
     "import:txt": "node scripts/import-local-txt.mjs",
-    "import:export:one": "node scripts/import-supabase-export-one.mjs"
+    "import:export:one": "node scripts/import-supabase-export-one.mjs",
+    "import:export:all": "node scripts/import-supabase-export-all.mjs"
   },
   "devDependencies": {
     "csv-parse": "^6.1.0"

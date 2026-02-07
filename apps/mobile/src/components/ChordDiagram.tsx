@@ -2,65 +2,128 @@ import { View, Text, StyleSheet } from 'react-native';
 import { getChordShape } from '@cifras/chords';
 import { colors } from '../lib/theme';
 
-type DiagramSize = 'sm' | 'md';
+type DiagramVariant = 'inline' | 'modal';
 
-function getConfig(size: DiagramSize) {
-  if (size === 'sm') {
+type Config = {
+  stringSpacing: number;
+  fretSpacing: number;
+  padX: number;
+  gridWidth: number;
+  gridHeight: number;
+  dot: number;
+  open: number;
+  stringWidth: number;
+  fretWidth: number;
+  nutHeight: number;
+  label: number;
+  capoBox: number;
+  baseLabelOffset: number;
+  bottomOffset: number;
+  barreHeight: number;
+};
+
+function getConfig(variant: DiagramVariant): Config {
+  if (variant === 'inline') {
     return {
-      stringSpacing: 18,
-      fretSpacing: 22,
-      markerRow: 18,
-      padX: 8,
-      gridWidth: 108,
-      gridHeight: 132,
+      stringSpacing: 12,
+      fretSpacing: 14,
+      padX: 6,
+      gridWidth: 84,
+      gridHeight: 96,
       dot: 12,
-      open: 10,
-      stringWidth: 2,
-      fretWidth: 2,
-      nutHeight: 4,
-      label: 12
+      open: 8,
+      stringWidth: 1,
+      fretWidth: 1,
+      nutHeight: 2,
+      label: 10,
+      capoBox: 14,
+      baseLabelOffset: 10,
+      bottomOffset: 10,
+      barreHeight: 6
     };
   }
 
   return {
-    stringSpacing: 20,
-    fretSpacing: 24,
-    markerRow: 20,
-    padX: 10,
-    gridWidth: 122,
-    gridHeight: 152,
-    dot: 14,
-    open: 12,
-    stringWidth: 2,
-    fretWidth: 2,
-    nutHeight: 4,
-    label: 13
+    stringSpacing: 16,
+    fretSpacing: 18,
+    padX: 8,
+    gridWidth: 116,
+    gridHeight: 132,
+    dot: 16,
+    open: 10,
+    stringWidth: 1,
+    fretWidth: 1,
+    nutHeight: 3,
+    label: 12,
+    capoBox: 16,
+    baseLabelOffset: 12,
+    bottomOffset: 12,
+    barreHeight: 8
   };
+}
+
+function getBarre(positions: number[]) {
+  const fretted = positions.map((p, i) => ({ p, i })).filter((v) => v.p > 0);
+  if (!fretted.length) return null;
+  const frets = new Map<number, number[]>();
+  for (const item of fretted) {
+    const list = frets.get(item.p) ?? [];
+    list.push(item.i);
+    frets.set(item.p, list);
+  }
+  const candidates = Array.from(frets.entries())
+    .filter(([, list]) => list.length >= 3)
+    .sort((a, b) => a[0] - b[0]);
+  if (!candidates.length) return null;
+  const [fret, list] = candidates[0];
+  return { fret, min: Math.min(...list), max: Math.max(...list) };
 }
 
 export default function ChordDiagram({
   chord,
   leftHanded,
-  size = 'sm'
+  variant = 'inline'
 }: {
   chord: string;
   leftHanded?: boolean;
-  size?: DiagramSize;
+  variant?: DiagramVariant;
 }) {
   const shape = getChordShape(chord);
   if (!shape) {
     return <Text style={styles.muted}>Sem diagrama</Text>;
   }
 
-  const cfg = getConfig(size);
+  const cfg = getConfig(variant);
   const positions = leftHanded ? [...shape.positions].reverse() : shape.positions;
   const baseFret = shape.baseFret ?? 1;
-  const stringsHeight = cfg.fretSpacing * 5;
-  const footerHeight = cfg.label + 10;
+  const baseLabel = baseFret > 1 ? String(baseFret) : '';
+  const barre = getBarre(positions);
+
+  const fretCount = 5;
+  const stringsHeight = cfg.fretSpacing * (fretCount - 1);
+  const gridHeight = stringsHeight + cfg.nutHeight + cfg.bottomOffset + cfg.open;
+
+  const gridTop = 0;
+  const stringsTop = gridTop;
+  const openRowY = stringsTop + stringsHeight + cfg.bottomOffset;
 
   return (
-    <View style={[styles.wrapper, { width: cfg.gridWidth, height: cfg.gridHeight + footerHeight }]}>
-      <View style={[styles.grid, { width: cfg.gridWidth, height: cfg.gridHeight }]}>
+    <View style={[styles.wrapper, { width: cfg.gridWidth, height: cfg.gridHeight + cfg.capoBox + 10 }]}>
+      <View style={[styles.capoRow, { height: cfg.capoBox + 6 }]}> 
+        {'CAPO'.split('').map((char) => (
+          <View key={char} style={[styles.capoBox, { width: cfg.capoBox, height: cfg.capoBox }]}>
+            <Text style={styles.capoBoxText}>{char}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={[styles.grid, { width: cfg.gridWidth, height: gridHeight }]}>
+        {baseLabel ? (
+          <Text style={[styles.baseFretLabel, { top: stringsTop + cfg.baseLabelOffset, left: 0, fontSize: cfg.label }]}> 
+            {baseLabel}
+          </Text>
+        ) : null}
+
         {Array.from({ length: 6 }).map((_, stringIndex) => (
           <View
             key={`s-${stringIndex}`}
@@ -68,67 +131,53 @@ export default function ChordDiagram({
               styles.string,
               {
                 left: cfg.padX + stringIndex * cfg.stringSpacing,
-                top: cfg.markerRow,
+                top: stringsTop,
                 height: stringsHeight,
                 width: cfg.stringWidth
               }
             ]}
           />
         ))}
-        {Array.from({ length: 6 }).map((_, fretIndex) => (
+
+        {Array.from({ length: fretCount }).map((_, fretIndex) => (
           <View
             key={`f-${fretIndex}`}
             style={[
               styles.fret,
               {
-                top: cfg.markerRow + fretIndex * cfg.fretSpacing,
+                top: stringsTop + fretIndex * cfg.fretSpacing,
                 left: cfg.padX,
                 right: cfg.padX,
-                height: fretIndex === 0 ? cfg.nutHeight : cfg.fretWidth
+                height: fretIndex === 0 && baseFret === 1 ? cfg.nutHeight : cfg.fretWidth
               }
             ]}
           />
         ))}
+
+        {barre ? (
+          <View
+            style={[
+              styles.barre,
+              {
+                top:
+                  stringsTop +
+                  (barre.fret - baseFret + 1 - 0.5) * cfg.fretSpacing -
+                  Math.round(cfg.barreHeight / 2),
+                left: cfg.padX + barre.min * cfg.stringSpacing - 2,
+                width: (barre.max - barre.min) * cfg.stringSpacing + 4,
+                height: cfg.barreHeight
+              }
+            ]}
+          />
+        ) : null}
+
         {positions.map((pos, stringIndex) => {
+          if (pos <= 0) return null;
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
-          if (pos === -1) {
-            return (
-              <Text
-                key={`x-${stringIndex}`}
-                style={[
-                  styles.muted,
-                  {
-                    fontSize: cfg.label,
-                    width: 16,
-                    textAlign: 'center',
-                    left: x - 8,
-                    top: 0
-                  }
-                ]}
-              >
-                x
-              </Text>
-            );
-          }
-          if (pos === 0) {
-            return (
-              <View
-                key={`o-${stringIndex}`}
-                style={[
-                  styles.open,
-                  {
-                    width: cfg.open,
-                    height: cfg.open,
-                    borderRadius: Math.round(cfg.open / 2),
-                    left: x - Math.round(cfg.open / 2),
-                    top: 2
-                  }
-                ]}
-              />
-            );
-          }
           const fret = pos - baseFret + 1;
-          const centerY = cfg.markerRow + (fret - 0.5) * cfg.fretSpacing;
+          const centerY = stringsTop + (fret - 0.5) * cfg.fretSpacing;
+          const finger = shape.fingers?.[stringIndex];
+
           return (
             <View
               key={`p-${stringIndex}`}
@@ -142,13 +191,71 @@ export default function ChordDiagram({
                   top: Math.round(centerY - cfg.dot / 2)
                 }
               ]}
+            >
+              {finger ? <Text style={[styles.dotLabel, { fontSize: cfg.label }]}>{finger}</Text> : null}
+            </View>
+          );
+        })}
+
+        {positions.map((pos, stringIndex) => {
+          const x = cfg.padX + stringIndex * cfg.stringSpacing;
+          if (pos === -1) {
+            return (
+              <Text
+                key={`x-${stringIndex}`}
+                style={[
+                  styles.muted,
+                  {
+                    position: 'absolute',
+                    fontSize: cfg.label,
+                    width: 14,
+                    textAlign: 'center',
+                    left: x - 7,
+                    top: openRowY
+                  }
+                ]}
+              >
+                x
+              </Text>
+            );
+          }
+
+          if (pos === 0) {
+            return (
+              <View
+                key={`o-${stringIndex}`}
+                style={[
+                  styles.open,
+                  {
+                    width: cfg.open,
+                    height: cfg.open,
+                    borderRadius: Math.round(cfg.open / 2),
+                    left: x - Math.round(cfg.open / 2),
+                    top: openRowY
+                  }
+                ]}
+              />
+            );
+          }
+
+          return (
+            <View
+              key={`f-${stringIndex}`}
+              style={[
+                styles.open,
+                styles.filled,
+                {
+                  width: cfg.open,
+                  height: cfg.open,
+                  borderRadius: Math.round(cfg.open / 2),
+                  left: x - Math.round(cfg.open / 2),
+                  top: openRowY
+                }
+              ]}
             />
           );
         })}
       </View>
-      {baseFret > 1 && (
-        <Text style={[styles.fretLabel, { fontSize: cfg.label }]}>{baseFret}fr</Text>
-      )}
     </View>
   );
 }
@@ -158,34 +265,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start'
   },
+  capoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingBottom: 4
+  },
+  capoBox: {
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111'
+  },
+  capoBoxText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '800'
+  },
   grid: {
     position: 'relative'
   },
   string: {
     position: 'absolute',
-    backgroundColor: colors.text
+    backgroundColor: '#222'
   },
   fret: {
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: colors.text
+    backgroundColor: '#222'
+  },
+  barre: {
+    position: 'absolute',
+    backgroundColor: '#111',
+    borderRadius: 6
   },
   dot: {
     position: 'absolute',
-    backgroundColor: colors.text
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  dotLabel: {
+    color: '#fff',
+    fontWeight: '800'
   },
   open: {
     position: 'absolute',
-    borderWidth: 2,
-    borderColor: colors.text
+    borderWidth: 1,
+    borderColor: '#222',
+    backgroundColor: '#fff'
+  },
+  filled: {
+    backgroundColor: '#111',
+    borderColor: '#111'
   },
   muted: {
     color: colors.muted,
-    fontSize: 12
+    fontSize: 11
   },
-  fretLabel: {
+  baseFretLabel: {
+    position: 'absolute',
     color: colors.muted,
-    marginTop: 4
+    fontWeight: '700'
   }
 });
