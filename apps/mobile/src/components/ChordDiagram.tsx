@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { getChordShape } from '@cifras/chords';
+import { getChordShapeForInstrument, type Instrument } from '@cifras/chords';
 import { colors } from '../lib/theme';
 
 type DiagramVariant = 'inline' | 'modal';
@@ -8,8 +8,6 @@ type Config = {
   stringSpacing: number;
   fretSpacing: number;
   padX: number;
-  gridWidth: number;
-  gridHeight: number;
   dot: number;
   open: number;
   stringWidth: number;
@@ -28,8 +26,6 @@ function getConfig(variant: DiagramVariant): Config {
       stringSpacing: 12,
       fretSpacing: 14,
       padX: 6,
-      gridWidth: 84,
-      gridHeight: 96,
       dot: 12,
       open: 8,
       stringWidth: 1,
@@ -47,8 +43,6 @@ function getConfig(variant: DiagramVariant): Config {
     stringSpacing: 16,
     fretSpacing: 18,
     padX: 8,
-    gridWidth: 116,
-    gridHeight: 132,
     dot: 16,
     open: 10,
     stringWidth: 1,
@@ -62,7 +56,34 @@ function getConfig(variant: DiagramVariant): Config {
   };
 }
 
-function getBarre(positions: number[]) {
+function getBarre(positions: number[], fingers?: number[]) {
+  // Prefer explicit finger data (finger 1 repeated across strings usually indicates a barre).
+  if (fingers && fingers.length === positions.length) {
+    const groups = new Map<string, { fret: number; finger: number; strings: number[] }>();
+    for (let i = 0; i < positions.length; i += 1) {
+      const fret = positions[i] ?? 0;
+      const finger = fingers[i] ?? 0;
+      if (fret <= 0 || finger <= 0) continue;
+      const key = `${fret}:${finger}`;
+      const existing = groups.get(key) ?? { fret, finger, strings: [] };
+      existing.strings.push(i);
+      groups.set(key, existing);
+    }
+
+    const candidates = Array.from(groups.values())
+      .filter((g) => g.strings.length >= 2)
+      .map((g) => ({ fret: g.fret, finger: g.finger, min: Math.min(...g.strings), max: Math.max(...g.strings) }))
+      .sort((a, b) => {
+        const aFinger = a.finger === 1 ? 0 : 1;
+        const bFinger = b.finger === 1 ? 0 : 1;
+        if (aFinger !== bFinger) return aFinger - bFinger;
+        if (a.fret !== b.fret) return a.fret - b.fret;
+        return (b.max - b.min) - (a.max - a.min);
+      });
+    if (candidates.length) return candidates[0];
+  }
+
+  // Fallback heuristic: multiple strings fretted on the same fret.
   const fretted = positions.map((p, i) => ({ p, i })).filter((v) => v.p > 0);
   if (!fretted.length) return null;
   const frets = new Map<number, number[]>();
@@ -71,44 +92,50 @@ function getBarre(positions: number[]) {
     list.push(item.i);
     frets.set(item.p, list);
   }
+  const threshold = positions.length >= 6 ? 3 : 2;
   const candidates = Array.from(frets.entries())
-    .filter(([, list]) => list.length >= 3)
+    .filter(([, list]) => list.length >= threshold)
     .sort((a, b) => a[0] - b[0]);
   if (!candidates.length) return null;
   const [fret, list] = candidates[0];
-  return { fret, min: Math.min(...list), max: Math.max(...list) };
+  return { fret, min: Math.min(...list), max: Math.max(...list), finger: 0 };
 }
 
 export default function ChordDiagram({
   chord,
+  instrument = 'guitar',
   leftHanded,
   variant = 'inline'
 }: {
   chord: string;
+  instrument?: Instrument;
   leftHanded?: boolean;
   variant?: DiagramVariant;
 }) {
-  const shape = getChordShape(chord);
+  const shape = getChordShapeForInstrument(chord, instrument);
   if (!shape) {
     return <Text style={styles.muted}>Sem diagrama</Text>;
   }
 
   const cfg = getConfig(variant);
   const positions = leftHanded ? [...shape.positions].reverse() : shape.positions;
+  const fingers = shape.fingers ? (leftHanded ? [...shape.fingers].reverse() : shape.fingers) : undefined;
+  const stringCount = positions.length;
   const baseFret = shape.baseFret ?? 1;
   const baseLabel = baseFret > 1 ? String(baseFret) : '';
-  const barre = getBarre(positions);
+  const barre = getBarre(positions, fingers);
 
   const fretCount = 5;
   const stringsHeight = cfg.fretSpacing * (fretCount - 1);
   const gridHeight = stringsHeight + cfg.nutHeight + cfg.bottomOffset + cfg.open;
+  const gridWidth = cfg.padX * 2 + cfg.stringSpacing * Math.max(0, stringCount - 1);
 
   const gridTop = 0;
   const stringsTop = gridTop;
   const openRowY = stringsTop + stringsHeight + cfg.bottomOffset;
 
   return (
-    <View style={[styles.wrapper, { width: cfg.gridWidth, height: cfg.gridHeight + cfg.capoBox + 10 }]}>
+    <View style={[styles.wrapper, { width: gridWidth, height: gridHeight + cfg.capoBox + 10 }]}>
       <View style={[styles.capoRow, { height: cfg.capoBox + 6 }]}> 
         {'CAPO'.split('').map((char) => (
           <View key={char} style={[styles.capoBox, { width: cfg.capoBox, height: cfg.capoBox }]}>
@@ -117,14 +144,14 @@ export default function ChordDiagram({
         ))}
       </View>
 
-      <View style={[styles.grid, { width: cfg.gridWidth, height: gridHeight }]}>
+      <View style={[styles.grid, { width: gridWidth, height: gridHeight }]}>
         {baseLabel ? (
           <Text style={[styles.baseFretLabel, { top: stringsTop + cfg.baseLabelOffset, left: 0, fontSize: cfg.label }]}> 
             {baseLabel}
           </Text>
         ) : null}
 
-        {Array.from({ length: 6 }).map((_, stringIndex) => (
+        {Array.from({ length: stringCount }).map((_, stringIndex) => (
           <View
             key={`s-${stringIndex}`}
             style={[
@@ -176,7 +203,7 @@ export default function ChordDiagram({
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
           const fret = pos - baseFret + 1;
           const centerY = stringsTop + (fret - 0.5) * cfg.fretSpacing;
-          const finger = shape.fingers?.[stringIndex];
+          const finger = fingers?.[stringIndex];
 
           return (
             <View

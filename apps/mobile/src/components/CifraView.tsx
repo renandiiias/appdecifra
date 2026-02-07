@@ -24,6 +24,7 @@ import {
 } from 'react-native';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { Instrument } from '@cifras/chords';
 import {
   encodeSharedSongVersion,
   extractChords,
@@ -43,10 +44,99 @@ const MONO_FONT = Platform.select({
 });
 
 const INSTRUMENT_LABEL = 'Violão & Guitarra';
+const INSTRUMENTS = [INSTRUMENT_LABEL, 'Teclado', 'Ukulele', 'Cavaco', 'Viola caipira'] as const;
+const SUPPORTED_INSTRUMENTS = new Set<string>([INSTRUMENT_LABEL, 'Teclado', 'Ukulele']);
 const CHORD_LINE_SCALE = 1;
 const CHORD_INLINE_SCALE = 1;
 const SPEED_MIN = 0.25;
 const SPEED_MAX = 2.5;
+
+function chordToKeyboardNotesPt(rawChord: string): string[] {
+  const chord = String(rawChord ?? '').trim().replace(/\s+/gu, '');
+  if (!chord) return [];
+
+  const main = chord.split('/')[0] ?? chord;
+  const match = main.match(/^([A-Ga-g])([#b])?(.*)$/u);
+  if (!match) return [];
+
+  const root = `${match[1].toUpperCase()}${match[2] ?? ''}`;
+  const suffixRaw = String(match[3] ?? '');
+  const suffix = suffixRaw.replace(/\(.*?\)/gu, '').toLowerCase();
+
+  const semis: Record<string, number> = {
+    C: 0,
+    'C#': 1,
+    Db: 1,
+    D: 2,
+    'D#': 3,
+    Eb: 3,
+    E: 4,
+    F: 5,
+    'F#': 6,
+    Gb: 6,
+    G: 7,
+    'G#': 8,
+    Ab: 8,
+    A: 9,
+    'A#': 10,
+    Bb: 10,
+    B: 11
+  };
+
+  const rootSemi = semis[root];
+  if (rootSemi === undefined) return [];
+
+  const isMaj7 = /maj7/u.test(suffix);
+  const isM7 = !isMaj7 && /m7/u.test(suffix);
+  const is7 = !isMaj7 && !isM7 && /7/u.test(suffix);
+  const isDim = /dim|º|°/u.test(suffix);
+  const isAug = /aug|\+/u.test(suffix);
+  const isSus2 = /sus2/u.test(suffix);
+  const isSus4 = /sus4/u.test(suffix);
+  const isMinor = /m/u.test(suffix) && !/maj/u.test(suffix) && !isDim;
+
+  const intervals: number[] = [];
+  if (isSus2) intervals.push(0, 2, 7);
+  else if (isSus4) intervals.push(0, 5, 7);
+  else if (isDim) intervals.push(0, 3, 6);
+  else if (isAug) intervals.push(0, 4, 8);
+  else if (isMinor) intervals.push(0, 3, 7);
+  else intervals.push(0, 4, 7);
+
+  if (isMaj7) intervals.push(11);
+  else if (is7 || isM7) intervals.push(10);
+
+  if (/add9|9/u.test(suffix)) intervals.push(14);
+
+  const chroma = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'] as const;
+  const toSolfege = (n: string) => {
+    const map: Record<string, string> = {
+      C: 'Dó',
+      'C#': 'Dó#',
+      D: 'Ré',
+      'D#': 'Ré#',
+      E: 'Mi',
+      F: 'Fá',
+      'F#': 'Fá#',
+      G: 'Sol',
+      'G#': 'Sol#',
+      A: 'Lá',
+      'A#': 'Lá#',
+      B: 'Si'
+    };
+    return map[n] ?? n;
+  };
+
+  const notes = Array.from(
+    new Set(
+      intervals
+        .map((i) => chroma[(rootSemi + i) % 12])
+        .filter(Boolean)
+    )
+  ) as string[];
+
+  return notes.map(toSolfege);
+}
 
 type ParsedCifra = {
   cleanText: string;
@@ -945,7 +1035,18 @@ export default function CifraView({
                     {chord}
                   </Text>
                   <View style={styles.chordCardDiagram}>
-                    <ChordDiagram chord={chord} leftHanded={leftHanded} variant={diagramVariant} />
+                    {instrument === 'Teclado' ? (
+                      <Text style={styles.keyboardNotes} numberOfLines={2}>
+                        {chordToKeyboardNotesPt(chord).join(' \u2022 ') || 'Notas em breve'}
+                      </Text>
+                    ) : (
+                      <ChordDiagram
+                        chord={chord}
+                        instrument={(instrument === 'Ukulele' ? 'ukulele' : 'guitar') as Instrument}
+                        leftHanded={leftHanded}
+                        variant={diagramVariant}
+                      />
+                    )}
                   </View>
                 </TouchableOpacity>
               ))}
@@ -1478,8 +1579,8 @@ export default function CifraView({
 
               {showDiagrams ? (
                 <View style={{ paddingTop: 6 }}>
-                  {['Violão & Guitarra', 'Teclado', 'Cavaco', 'Ukulele', 'Viola caipira'].map((label) => {
-                    const disabled = label !== INSTRUMENT_LABEL;
+                  {INSTRUMENTS.map((label) => {
+                    const disabled = !SUPPORTED_INSTRUMENTS.has(label);
                     const selected = instrument === label;
                     return (
                       <TouchableOpacity
@@ -1487,7 +1588,7 @@ export default function CifraView({
                         style={[styles.panelRow, disabled ? styles.panelRowDisabled : null]}
                         onPress={() => {
                           if (disabled) {
-                            Alert.alert('Em breve', 'Por enquanto, os diagramas são apenas para Violão & Guitarra.');
+                            Alert.alert('Em breve', 'Por enquanto, os diagramas estão disponíveis para Violão & Guitarra, Teclado e Ukulele.');
                             return;
                           }
                           setInstrument(label);
@@ -1856,7 +1957,18 @@ export default function CifraView({
           <Pressable style={styles.chordModal} onPress={() => {}}>
             <Text style={styles.chordModalTitle}>{selectedChord}</Text>
             {selectedChord ? (
-              <ChordDiagram chord={selectedChord} leftHanded={leftHanded} variant={diagramVariantModal} />
+              instrument === 'Teclado' ? (
+                <Text style={styles.keyboardNotesModal}>
+                  {chordToKeyboardNotesPt(selectedChord).join(' \u2022 ') || 'Notas em breve'}
+                </Text>
+              ) : (
+                <ChordDiagram
+                  chord={selectedChord}
+                  instrument={(instrument === 'Ukulele' ? 'ukulele' : 'guitar') as Instrument}
+                  leftHanded={leftHanded}
+                  variant={diagramVariantModal}
+                />
+              )
             ) : null}
             <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedChord(null)}>
               <Text style={styles.closeButtonText}>Fechar</Text>
@@ -1993,6 +2105,15 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   chordCardDiagram: { alignItems: 'center', justifyContent: 'center' },
+  keyboardNotes: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 6
+  },
 
   keyRow: { marginTop: 16, flexDirection: 'row', alignItems: 'baseline', gap: 10 },
   keyLabel: { fontSize: 22, fontWeight: '900', color: colors.text },
@@ -2381,6 +2502,14 @@ const styles = StyleSheet.create({
     gap: 12
   },
   chordModalTitle: { fontSize: 20, fontWeight: '900', color: colors.text },
+  keyboardNotesModal: {
+    color: colors.text,
+    fontWeight: '800',
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 6
+  },
 
   closeButton: { backgroundColor: colors.text, paddingVertical: 10, paddingHorizontal: 18, borderRadius: radii.pill },
   closeButtonText: { color: '#fff', fontWeight: '900' },

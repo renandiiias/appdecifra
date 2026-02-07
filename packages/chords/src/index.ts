@@ -63,6 +63,16 @@ import CHORD_DB_RAW from './chords-db.json';
 
 const CHORD_DB = CHORD_DB_RAW as Record<string, ChordDbShape[]>;
 
+// Ukulele chord database (G C E A). Generated from an MIT licensed dataset
+// using scripts/build-ukulele-db.mjs (kept as JSON for Metro/Next bundling).
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import UKULELE_DB_RAW from './ukulele-db.json';
+
+const UKULELE_DB = UKULELE_DB_RAW as Record<string, ChordDbShape[]>;
+
+export type Instrument = 'guitar' | 'ukulele';
+
 type ShapeKind = 'major' | 'minor' | '7' | 'maj7' | 'm7' | 'sus4' | 'sus2' | 'add9' | 'madd9';
 
 const NOTE_TO_SEMITONE: Record<string, number> = {
@@ -336,6 +346,42 @@ export function getChordShapes(name: string): ChordShape[] {
 
   const generated = generateShape(name);
   return generated ? [generated] : [];
+}
+
+function getUkuleleChordShapes(name: string): ChordShape[] {
+  if (!name) return [];
+
+  for (const candidate of chordDbCandidates(name)) {
+    const variants = UKULELE_DB[candidate];
+    if (!variants || !variants.length) continue;
+    const preferred = selectPreferredShape(variants, candidate);
+    const out: ChordShape[] = [];
+    const seen = new Set<string>();
+    const pushShape = (shape: ChordShape) => {
+      const sig = shape.positions.join(',');
+      if (seen.has(sig)) return;
+      seen.add(sig);
+      out.push(shape);
+    };
+    pushShape(preferred);
+    for (const v of variants) {
+      pushShape({ name: candidate, ...v });
+    }
+    return out;
+  }
+
+  return [];
+}
+
+export function getChordShapeForInstrument(name: string, instrument: Instrument = 'guitar'): ChordShape | null {
+  const shapes = getChordShapesForInstrument(name, instrument);
+  if (!shapes.length) return null;
+  return shapes[0];
+}
+
+export function getChordShapesForInstrument(name: string, instrument: Instrument = 'guitar'): ChordShape[] {
+  if (instrument === 'ukulele') return getUkuleleChordShapes(name);
+  return getChordShapes(name);
 }
 
 export function listChordNames(): string[] {
