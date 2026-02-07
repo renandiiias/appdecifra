@@ -90,8 +90,45 @@ function inferCategory(artist, title) {
   return 'Louvor';
 }
 
+function isScrapeUrlLine(line) {
+  const t = String(line ?? '').trim().toLowerCase();
+  if (!t) return false;
+  if (t.startsWith('http://') || t.startsWith('https://')) return true;
+  if (t.includes('cifraclub.com.br')) return true;
+  if (t.includes('www.')) return true;
+  return false;
+}
+
+function cleanExportText(raw) {
+  const lines = String(raw ?? '').split(/\r?\n/u);
+  const out = [];
+  let blank = 0;
+
+  for (const lineRaw of lines) {
+    const line = String(lineRaw ?? '').replace(/\s+$/u, '');
+    const trimmed = line.trim();
+
+    if (isScrapeUrlLine(trimmed)) continue;
+
+    // "11.258.341 exibições"
+    if (/^\d+(?:\.\d+)*\s+exibiç(?:ões|oes)$/iu.test(trimmed)) continue;
+
+    if (!trimmed) {
+      blank += 1;
+      if (blank > 2) continue;
+      out.push('');
+      continue;
+    }
+
+    blank = 0;
+    out.push(line);
+  }
+
+  return out.join('\n').trim();
+}
+
 function formatCreditsIntoText(baseText, row) {
-  const text = String(baseText ?? '').trim();
+  const text = cleanExportText(baseText);
   if (!text) return text;
 
   const normalized = normalizeSearch(text);
