@@ -4,14 +4,14 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "expo start",
-    "start:clear": "expo start -c",
-    "start:tunnel": "expo start --tunnel",
-    "start:clear:tunnel": "expo start -c --tunnel",
-    "start:8082": "expo start --port 8082",
-    "start:clear:8082": "expo start -c --port 8082",
-    "android": "expo start --android",
-    "ios": "expo start --ios"
+    "start": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start",
+    "start:clear": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start -c",
+    "start:tunnel": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start --tunnel",
+    "start:clear:tunnel": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start -c --tunnel",
+    "start:8082": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start --port 8082",
+    "start:clear:8082": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start -c --port 8082",
+    "android": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start --android",
+    "ios": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" expo start --ios"
   },
   "dependencies": {
     "@babel/runtime": "7.28.6",
