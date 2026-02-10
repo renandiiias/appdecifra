@@ -1185,7 +1185,21 @@ export default function CifraView({
             <View style={{ flex: 1, gap: 6 }}>
               <View style={styles.titleLine}>
                 <Text style={styles.title}>{song.title}</Text>
-                <Ionicons name="checkmark-circle" size={18} color="#1d4ed8" />
+                <TouchableOpacity
+                  style={styles.titleLikeButton}
+                  onPress={() => onToggleFavorite?.()}
+                  disabled={!onToggleFavorite}
+                  activeOpacity={0.8}
+                  hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={isFavorite ? 'Desfavoritar' : 'Favoritar'}
+                >
+                  <Ionicons
+                    name={isFavorite ? 'heart' : 'heart-outline'}
+                    size={20}
+                    color={isFavorite ? colors.accent : colors.muted}
+                  />
+                </TouchableOpacity>
               </View>
               <Text style={styles.artist}>{artistName}</Text>
             </View>
@@ -1216,18 +1230,6 @@ export default function CifraView({
             style={styles.modeRowScroll}
             contentContainerStyle={styles.modeRow}
           >
-            <TouchableOpacity
-              style={styles.modeIconPill}
-              onPress={() => onToggleFavorite?.()}
-              disabled={!onToggleFavorite}
-            >
-              <Ionicons
-                name={isFavorite ? 'heart' : 'heart-outline'}
-                size={18}
-                color={isFavorite ? colors.accent : colors.muted}
-              />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.modePill, lyricsOnly ? styles.modePillActive : null]}
               onPress={() => setLyricsOnly((v) => !v)}
@@ -2418,8 +2420,9 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  title: { fontSize: 28, fontWeight: '900', color: colors.text },
+  titleLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  title: { flex: 1, fontSize: 28, fontWeight: '900', color: colors.text },
+  titleLikeButton: { padding: 4, marginTop: 4, alignSelf: 'flex-start' },
   artist: { color: colors.accent, fontWeight: '800', fontSize: 16 },
 
   videoThumb: {
@@ -2481,9 +2484,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     borderRadius: 16,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     marginRight: 10,
     alignItems: 'center'
   },

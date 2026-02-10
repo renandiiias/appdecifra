@@ -57,7 +57,6 @@ export default function LoginScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [isArtist, setIsArtist] = useState(false);
-  const [artistVerified, setArtistVerified] = useState(false);
   const [signUpArtist, setSignUpArtist] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
@@ -118,9 +117,6 @@ export default function LoginScreen() {
       const artistFlag =
         typeof user?.user_metadata?.is_artist === 'boolean' ? user.user_metadata.is_artist : false;
       setIsArtist(artistFlag);
-      const verifiedFlag =
-        typeof user?.user_metadata?.artist_verified === 'boolean' ? user.user_metadata.artist_verified : false;
-      setArtistVerified(verifiedFlag);
     };
 
     syncSession();
@@ -804,19 +800,6 @@ export default function LoginScreen() {
                   </Text>
                 </View>
                 <Switch value={isArtist} onValueChange={toggleArtistMode} />
-              </View>
-
-              <View style={styles.badgeRow}>
-                <View style={[styles.badge, artistVerified ? styles.badgeOk : styles.badgeMuted]}>
-                  <Ionicons
-                    name={artistVerified ? 'checkmark-circle' : 'time-outline'}
-                    size={14}
-                    color={artistVerified ? '#065f46' : colors.muted}
-                  />
-                  <Text style={artistVerified ? styles.badgeTextOk : styles.badgeTextMuted}>
-                    {artistVerified ? 'Verificado' : 'Nao verificado'}
-                  </Text>
-                </View>
               </View>
 
               <TouchableOpacity style={styles.button} onPress={openArtistClaim}>
