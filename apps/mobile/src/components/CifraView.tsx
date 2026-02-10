@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import { Audio } from 'expo-av';
 import {
   Alert,
   Animated,
@@ -384,6 +385,20 @@ export default function CifraView({
   const [capoOpen, setCapoOpen] = useState(false);
   const [capoValue, setCapoValue] = useState<number>(song.capo ?? 0);
   const [textSizeOpen, setTextSizeOpen] = useState(false);
+
+  const [metronomeOpen, setMetronomeOpen] = useState(false);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [metronomeBpm, setMetronomeBpm] = useState(90);
+  const metronomeSoundRef = useRef<Audio.Sound | null>(null);
+  const metronomeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [videoLessonOpen, setVideoLessonOpen] = useState(false);
+  const [videoLessonName, setVideoLessonName] = useState('');
+  const [videoLessonEmail, setVideoLessonEmail] = useState('');
+  const [videoLessonWhatsapp, setVideoLessonWhatsapp] = useState('');
+  const [videoLessonYoutube, setVideoLessonYoutube] = useState('');
+  const [videoLessonMessage, setVideoLessonMessage] = useState('');
+
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimName, setClaimName] = useState('');
   const [claimEmail, setClaimEmail] = useState('');
@@ -431,6 +446,7 @@ export default function CifraView({
     pinchBaseScale.current = 1;
     pinchLastScale.current = 1;
     setFontScale(1);
+    setMetronomeEnabled(false);
   }, [song.id]);
 
   useEffect(() => {
@@ -508,6 +524,68 @@ export default function CifraView({
     };
   }, [autoScroll]);
 
+  const clearMetronomeTimer = useCallback(() => {
+    if (metronomeIntervalRef.current) {
+      clearInterval(metronomeIntervalRef.current as any);
+      metronomeIntervalRef.current = null;
+    }
+  }, []);
+
+  const ensureMetronomeSound = useCallback(async () => {
+    if (metronomeSoundRef.current) return metronomeSoundRef.current;
+
+    try {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+    } catch {
+      // ignore
+    }
+
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/metronome/click.wav'),
+      { volume: 1.0 }
+    );
+    metronomeSoundRef.current = sound;
+    return sound;
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      clearMetronomeTimer();
+      metronomeSoundRef.current?.unloadAsync().catch(() => {});
+      metronomeSoundRef.current = null;
+    };
+  }, [clearMetronomeTimer]);
+
+  useEffect(() => {
+    if (!metronomeEnabled) {
+      clearMetronomeTimer();
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const sound = await ensureMetronomeSound();
+      if (cancelled) return;
+
+      clearMetronomeTimer();
+      const bpm = clamp(metronomeBpm, 40, 240);
+      const intervalMs = Math.max(80, Math.round(60000 / bpm));
+
+      sound.replayAsync().catch(() => {});
+      metronomeIntervalRef.current = setInterval(() => {
+        sound.replayAsync().catch(() => {});
+      }, intervalMs);
+    })().catch(() => {
+      setMetronomeEnabled(false);
+      clearMetronomeTimer();
+    });
+
+    return () => {
+      cancelled = true;
+      clearMetronomeTimer();
+    };
+  }, [clearMetronomeTimer, ensureMetronomeSound, metronomeBpm, metronomeEnabled]);
+
   const rawForRender =
     personalUserId && personalEnabled && typeof personalText === 'string' && personalText.trim().length
       ? personalText
@@ -578,7 +656,8 @@ export default function CifraView({
 
   const shareSong = async () => {
     try {
-      const baseWebUrl = process.env.EXPO_PUBLIC_WEB_TUNER_URL;
+      const explicitWebUrl = process.env.EXPO_PUBLIC_WEB_URL;
+      const baseWebUrl = explicitWebUrl ?? process.env.EXPO_PUBLIC_WEB_TUNER_URL;
       const hostUri =
         (Constants.expoConfig as any)?.hostUri ||
         (Constants.expoGoConfig as any)?.debuggerHost ||
@@ -586,7 +665,11 @@ export default function CifraView({
         (Constants as any)?.manifest2?.extra?.expoClient?.hostUri ||
         '';
       const host = typeof hostUri === 'string' ? hostUri.split(':')[0] : '';
-      const rawBase = baseWebUrl ? baseWebUrl.replace(/\/afinador\/?$/u, '').replace(/\/$/u, '') : null;
+      const rawBase = explicitWebUrl
+        ? explicitWebUrl.replace(/\/$/u, '')
+        : baseWebUrl
+          ? baseWebUrl.replace(/\/afinador\/?$/u, '').replace(/\/$/u, '')
+          : null;
       const baseUrl =
         host && rawBase && /localhost|127\\.0\\.0\\.1/u.test(rawBase)
           ? rawBase.replace(/localhost|127\\.0\\.0\\.1/u, host)
@@ -609,6 +692,79 @@ export default function CifraView({
     }
     return user;
   }, []);
+
+  const openVideoLessonRequest = useCallback(async () => {
+    const user = await ensureLoggedIn();
+    if (!user) return;
+
+    const suggestedName =
+      typeof user.user_metadata?.name === 'string'
+        ? user.user_metadata.name
+        : typeof user.user_metadata?.full_name === 'string'
+          ? user.user_metadata.full_name
+          : '';
+
+    setVideoLessonName((prev) => prev || suggestedName || '');
+    setVideoLessonEmail((prev) => prev || user.email || '');
+    setVideoLessonOpen(true);
+  }, [ensureLoggedIn]);
+
+  const submitVideoLessonRequest = useCallback(async () => {
+    const user = await ensureLoggedIn();
+    if (!user) return;
+
+    const name = videoLessonName.trim();
+    const email = (videoLessonEmail.trim() || user.email || '').trim();
+    const whatsapp = videoLessonWhatsapp.trim();
+    const youtubeRaw = videoLessonYoutube.trim();
+    const youtube_url =
+      youtubeRaw && !/^https?:\/\//u.test(youtubeRaw) ? `https://${youtubeRaw}` : youtubeRaw;
+    const message = videoLessonMessage.trim();
+
+    if (!name) return Alert.alert('Seu nome', 'Digite seu nome para enviar a candidatura.');
+    if (!email) return Alert.alert('Email', 'Digite seu email para contato.');
+    if (!youtube_url) return Alert.alert('Link do YouTube', 'Cole o link da videoaula.');
+
+    const record = {
+      song_id: song.id,
+      song_title: song.title,
+      artist: artistName,
+      user_id: user.id,
+      name,
+      email,
+      whatsapp,
+      youtube_url,
+      message,
+      created_at: new Date().toISOString()
+    };
+
+    const { error: reqErr } = await supabase.from('song_video_lesson_requests').insert(record as any);
+    if (!reqErr) {
+      setVideoLessonOpen(false);
+      setVideoLessonYoutube('');
+      setVideoLessonMessage('');
+      Alert.alert('Enviado', 'Recebemos sua candidatura. Vamos analisar e entrar em contato.');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      const meta = data.user?.user_metadata ?? {};
+      const list = Array.isArray((meta as any).song_video_lesson_requests)
+        ? (meta as any).song_video_lesson_requests
+        : [];
+      const next = [...list, record].slice(-50);
+      const { error: updateErr } = await supabase.auth.updateUser({ data: { ...meta, song_video_lesson_requests: next } });
+      if (updateErr) throw updateErr;
+      setVideoLessonOpen(false);
+      setVideoLessonYoutube('');
+      setVideoLessonMessage('');
+      Alert.alert('Enviado', 'Recebemos sua candidatura. Vamos analisar e entrar em contato.');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível enviar agora. Tente novamente em instantes.');
+    }
+  }, [ensureLoggedIn, artistName, song.id, song.title, videoLessonEmail, videoLessonMessage, videoLessonName, videoLessonWhatsapp, videoLessonYoutube]);
 
   const openClaim = useCallback(async () => {
     const user = await ensureLoggedIn();
@@ -831,7 +987,7 @@ export default function CifraView({
     ]).start();
   };
 
-  const closeOptions = () => {
+  const closeOptions = (afterClose?: () => void) => {
     Animated.parallel([
       Animated.timing(optionsTranslateY, {
         toValue: optionsSheetHeight,
@@ -844,7 +1000,9 @@ export default function CifraView({
         useNativeDriver: true
       })
     ]).start(({ finished }) => {
-      if (finished) setOptionsOpen(false);
+      if (!finished) return;
+      setOptionsOpen(false);
+      if (afterClose) requestAnimationFrame(afterClose);
     });
   };
 
@@ -1033,7 +1191,9 @@ export default function CifraView({
 
             <TouchableOpacity
               style={styles.videoThumb}
-              onPress={() => (onOpenMaintenance ? onOpenMaintenance() : undefined)}
+              onPress={() => {
+                void openVideoLessonRequest();
+              }}
               activeOpacity={0.85}
             >
               <Image
@@ -1073,50 +1233,6 @@ export default function CifraView({
             >
               <Text style={lyricsOnly ? styles.modeTextActive : styles.modeText}>Letra</Text>
             </TouchableOpacity>
-          </ScrollView>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.instrumentRowScroll}
-            contentContainerStyle={styles.instrumentRow}
-          >
-            {INSTRUMENTS.map((label) => {
-              const supported = SUPPORTED_INSTRUMENTS.has(label);
-              const active = instrument === label;
-              return (
-                <TouchableOpacity
-                  key={label}
-                  style={[
-                    styles.instrumentPill,
-                    active ? styles.instrumentPillActive : null,
-                    !supported ? styles.instrumentPillDisabled : null
-                  ]}
-                  onPress={() => {
-                    if (!supported) {
-                      Alert.alert('Em breve', `${label} será adicionado em breve.`);
-                      return;
-                    }
-                    setInstrument(label);
-                    setShowDiagrams(true);
-                  }}
-                  activeOpacity={0.85}
-                >
-                  <Text
-                    style={
-                      !supported
-                        ? styles.instrumentTextDisabled
-                        : active
-                          ? styles.instrumentTextActive
-                          : styles.instrumentText
-                    }
-                    numberOfLines={1}
-                  >
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
           </ScrollView>
 
           {showDiagrams ? (
@@ -1481,7 +1597,12 @@ export default function CifraView({
               <Text style={styles.optionsTitle}>Opções</Text>
 
               <View style={styles.quickRow}>
-                <TouchableOpacity style={styles.quickItem} onPress={() => onToggleFavorite?.()}>
+                <TouchableOpacity
+                  style={styles.quickItem}
+                  onPress={() => {
+                    closeOptions(() => onToggleFavorite?.());
+                  }}
+                >
                   <View style={styles.quickIcon}>
                     <Ionicons
                       name={isFavorite ? 'heart' : 'heart-outline'}
@@ -1489,49 +1610,58 @@ export default function CifraView({
                       color={isFavorite ? colors.accent : colors.text}
                     />
                   </View>
-                  <Text style={styles.quickLabel}>Favorito</Text>
+                  <Text style={styles.quickLabel}>{isFavorite ? 'Favoritado' : 'Favoritar'}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.quickItem} onPress={shareSong}>
+                <TouchableOpacity
+                  style={styles.quickItem}
+                  onPress={() => {
+                    closeOptions(() => {
+                      void shareSong();
+                    });
+                  }}
+                >
                   <View style={styles.quickIcon}>
                     <Ionicons name="share-outline" size={18} color={colors.text} />
                   </View>
                   <Text style={styles.quickLabel}>Compartilhar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.quickItem}
-                  onPress={() => Alert.alert('Em breve', 'Impressão será adicionada em breve.')}
-                >
-                  <View style={styles.quickIcon}>
-                    <Ionicons name="print-outline" size={18} color={colors.text} />
-                  </View>
-                  <Text style={styles.quickLabel}>Imprimir</Text>
-                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
                 style={styles.videoRow}
-                onPress={() => Alert.alert('Em breve', 'Videoaulas serão adicionadas em breve.')}
+                onPress={() => {
+                  closeOptions(() => {
+                    void openVideoLessonRequest();
+                  });
+                }}
                 activeOpacity={0.9}
               >
                 <View style={styles.videoRowLeft}>
                   <Ionicons name="videocam-outline" size={18} color={colors.muted} />
-                  <Text style={styles.videoRowText}>Videoaula (em breve)</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.videoRowText}>Adicionar videoaula</Text>
+                    <Text style={styles.videoRowSub}>Ganhe créditos no app</Text>
+                  </View>
                 </View>
-                <View style={styles.videoRowThumb} />
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </TouchableOpacity>
 
               <View style={styles.optionsCard}>
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(() => openPersonalEditor(), 200);
+                    closeOptions(() => {
+                      void openPersonalEditor();
+                    });
                   }}
                   activeOpacity={0.85}
                 >
                   <View style={styles.optionLeft}>
                     <Ionicons name="create-outline" size={18} color={colors.text} />
-                    <Text style={styles.optionTitle}>Editar (pra mim mesmo)</Text>
+                    <View style={styles.optionTitleStack}>
+                      <Text style={styles.optionTitle}>Editar</Text>
+                      <Text style={styles.optionSubtitle}>Pra mim mesmo</Text>
+                    </View>
                   </View>
                   <Text style={styles.optionValue}>
                     {personalText ? (personalEnabled ? 'Ativo' : 'Salvo') : 'Não configurado'}
@@ -1542,8 +1672,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(() => setInstrumentOpen(true), 180);
+                    closeOptions(() => setInstrumentOpen(true));
                   }}
                   activeOpacity={0.85}
                 >
@@ -1558,8 +1687,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(openKey, 200);
+                    closeOptions(openKey);
                   }}
                 >
                   <View style={styles.optionLeft}>
@@ -1573,8 +1701,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(() => setTuningOpen(true), 180);
+                    closeOptions(() => setTuningOpen(true));
                   }}
                   activeOpacity={0.85}
                 >
@@ -1589,8 +1716,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(() => setCapoOpen(true), 180);
+                    closeOptions(() => setCapoOpen(true));
                   }}
                   activeOpacity={0.85}
                 >
@@ -1605,8 +1731,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    setTimeout(() => setTextSizeOpen(true), 180);
+                    closeOptions(() => setTextSizeOpen(true));
                   }}
                   activeOpacity={0.85}
                 >
@@ -1623,8 +1748,7 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    closeOptions();
-                    onOpenTuner?.();
+                    closeOptions(() => onOpenTuner?.());
                   }}
                 >
                   <View style={styles.optionLeft}>
@@ -1636,14 +1760,14 @@ export default function CifraView({
                 <TouchableOpacity
                   style={styles.optionRow}
                   onPress={() => {
-                    Alert.alert('Em breve', 'Metrônomo será adicionado em breve.');
+                    closeOptions(() => setMetronomeOpen(true));
                   }}
                 >
                   <View style={styles.optionLeft}>
                     <Ionicons name="time-outline" size={18} color={colors.text} />
                     <Text style={styles.optionTitle}>Metrônomo</Text>
                   </View>
-                  <Text style={styles.optionValue}>Em breve</Text>
+                  <Text style={styles.optionValue}>{metronomeEnabled ? `Tocando · ${metronomeBpm} BPM` : `${metronomeBpm} BPM`}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -1869,6 +1993,54 @@ export default function CifraView({
         </Pressable>
       </Modal>
 
+      <Modal visible={metronomeOpen} transparent animationType="fade" onRequestClose={() => setMetronomeOpen(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setMetronomeOpen(false)}>
+          <Pressable style={styles.panelModal} onPress={() => {}}>
+            <Text style={styles.panelTitle}>Metrônomo</Text>
+            <View style={styles.formCard}>
+              <Text style={styles.formHint}>
+                Ajuste o BPM e inicie. Você pode fechar esta janela e continuar tocando com o metrônomo ligado.
+              </Text>
+
+              <View style={styles.metronomeRow}>
+                <TouchableOpacity
+                  style={styles.metronomeStep}
+                  onPress={() => setMetronomeBpm((v) => clamp(v - 5, 40, 240))}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="remove" size={18} color={colors.text} />
+                </TouchableOpacity>
+                <View style={styles.metronomeCenter}>
+                  <Text style={styles.metronomeBpm}>{metronomeBpm}</Text>
+                  <Text style={styles.metronomeUnit}>BPM</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.metronomeStep}
+                  onPress={() => setMetronomeBpm((v) => clamp(v + 5, 40, 240))}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="add" size={18} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                style={metronomeEnabled ? styles.metronomeStop : styles.primaryButton}
+                onPress={() => setMetronomeEnabled((v) => !v)}
+                activeOpacity={0.9}
+              >
+                <Text style={metronomeEnabled ? styles.metronomeStopText : styles.primaryButtonText}>
+                  {metronomeEnabled ? 'Parar metrônomo' : 'Iniciar metrônomo'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.closeButton} onPress={() => setMetronomeOpen(false)} activeOpacity={0.9}>
+              <Text style={styles.closeButtonText}>Fechar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={personalOpen} transparent animationType="fade" onRequestClose={closePersonalEditor}>
         <Pressable style={styles.sheetBackdrop} onPress={closePersonalEditor}>
           <KeyboardAvoidingView
@@ -1940,15 +2112,6 @@ export default function CifraView({
                       <Ionicons name="share-outline" size={16} color={colors.text} />
                       <Text style={styles.personalChipText}>Compartilhar</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.personalChip}
-                      onPress={() => Keyboard.dismiss()}
-                      activeOpacity={0.9}
-                    >
-                      <Ionicons name="keypad-outline" size={16} color={colors.text} />
-                      <Text style={styles.personalChipText}>Fechar teclado</Text>
-                    </TouchableOpacity>
                   </View>
                 </View>
               </ScrollView>
@@ -1974,6 +2137,69 @@ export default function CifraView({
               </View>
             </Pressable>
           </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={videoLessonOpen} transparent animationType="fade" onRequestClose={() => setVideoLessonOpen(false)}>
+        <Pressable style={styles.sheetBackdrop} onPress={() => setVideoLessonOpen(false)}>
+          <Pressable style={styles.panelModal} onPress={() => {}}>
+            <Text style={styles.panelTitle}>Adicionar videoaula</Text>
+            <View style={styles.formCard}>
+              <Text style={styles.formHint}>
+                Envie o link do YouTube e seus dados. Se aprovada, sua videoaula aparece no app com créditos.
+              </Text>
+
+              <TextInput
+                style={styles.formInput}
+                placeholder="Seu nome"
+                placeholderTextColor={colors.muted}
+                value={videoLessonName}
+                onChangeText={setVideoLessonName}
+                autoCapitalize="words"
+              />
+              <TextInput
+                style={styles.formInput}
+                placeholder="Email"
+                placeholderTextColor={colors.muted}
+                value={videoLessonEmail}
+                onChangeText={setVideoLessonEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TextInput
+                style={styles.formInput}
+                placeholder="WhatsApp (opcional)"
+                placeholderTextColor={colors.muted}
+                value={videoLessonWhatsapp}
+                onChangeText={setVideoLessonWhatsapp}
+              />
+              <TextInput
+                style={styles.formInput}
+                placeholder="Link do YouTube"
+                placeholderTextColor={colors.muted}
+                value={videoLessonYoutube}
+                onChangeText={setVideoLessonYoutube}
+                autoCapitalize="none"
+              />
+              <TextInput
+                style={[styles.formInput, styles.formArea]}
+                placeholder="Mensagem (opcional)"
+                placeholderTextColor={colors.muted}
+                value={videoLessonMessage}
+                onChangeText={setVideoLessonMessage}
+                multiline
+              />
+            </View>
+
+            <View style={{ gap: 10, marginTop: 12 }}>
+              <TouchableOpacity style={styles.primaryButton} onPress={submitVideoLessonRequest} activeOpacity={0.9}>
+                <Text style={styles.primaryButtonText}>Enviar candidatura</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setVideoLessonOpen(false)} activeOpacity={0.9}>
+                <Text style={styles.closeButtonText}>Fechar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
         </Pressable>
       </Modal>
 
@@ -2470,6 +2696,7 @@ const styles = StyleSheet.create({
   },
   videoRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   videoRowText: { fontWeight: '900', color: colors.text, fontSize: 18 },
+  videoRowSub: { color: colors.muted, fontWeight: '700', marginTop: 2, fontSize: 12 },
   videoRowThumb: { width: 74, height: 44, borderRadius: 12, backgroundColor: '#eaeaea' },
 
   optionsCard: {
@@ -2490,7 +2717,9 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border
   },
   optionLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  optionTitleStack: { flexShrink: 1, minWidth: 0 },
   optionTitle: { fontWeight: '900', color: colors.text, fontSize: 16 },
+  optionSubtitle: { color: colors.muted, fontWeight: '700', fontSize: 12, marginTop: 2 },
   optionValue: { color: colors.muted, fontWeight: '700' },
 
   toggleRow: {
@@ -2615,6 +2844,31 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   primaryButtonText: { color: '#fff', fontWeight: '900' },
+
+  metronomeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 14 },
+  metronomeStep: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f2f2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  metronomeCenter: { alignItems: 'center', justifyContent: 'center', minWidth: 90 },
+  metronomeBpm: { fontWeight: '900', color: colors.text, fontSize: 34, lineHeight: 38 },
+  metronomeUnit: { color: colors.muted, fontWeight: '800', fontSize: 12, marginTop: 2 },
+  metronomeStop: {
+    backgroundColor: colors.card,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border
+  },
+  metronomeStopText: { color: colors.text, fontWeight: '900' },
 
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   kindChip: {
