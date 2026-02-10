@@ -987,7 +987,8 @@ export default function CifraView({
     ]).start();
   };
 
-  const closeOptions = (afterClose?: () => void) => {
+  const closeOptions = (afterCloseOrEvent?: unknown) => {
+    const afterClose = typeof afterCloseOrEvent === 'function' ? (afterCloseOrEvent as () => void) : undefined;
     Animated.parallel([
       Animated.timing(optionsTranslateY, {
         toValue: optionsSheetHeight,
