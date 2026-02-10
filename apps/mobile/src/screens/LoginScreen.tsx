@@ -965,7 +965,12 @@ export default function LoginScreen() {
             style={{ width: '100%' }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <Pressable style={styles.sheetPanel} onPress={() => {}}>
+            <Pressable
+              style={styles.sheetPanel}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetTitle}>Minha igreja</Text>
                 <TouchableOpacity
@@ -1053,7 +1058,12 @@ export default function LoginScreen() {
             style={{ width: '100%' }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <Pressable style={[styles.sheetPanel, styles.sheetPanelTall]} onPress={() => {}}>
+            <Pressable
+              style={[styles.sheetPanel, styles.sheetPanelTall]}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <View style={styles.sheetHeader}>
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={styles.sheetTitle}>Grupo de louvor</Text>
@@ -1157,7 +1167,12 @@ export default function LoginScreen() {
             style={{ width: '100%' }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
-            <Pressable style={[styles.sheetPanel, styles.sheetPanelTall]} onPress={() => {}}>
+            <Pressable
+              style={[styles.sheetPanel, styles.sheetPanelTall]}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <View style={styles.sheetHeader}>
                 <View style={{ flex: 1, gap: 4 }}>
                   <Text style={styles.sheetTitle}>{setlistDraftId ? 'Editar escala' : 'Nova escala'}</Text>

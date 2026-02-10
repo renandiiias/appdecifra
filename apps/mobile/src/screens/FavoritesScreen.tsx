@@ -211,7 +211,12 @@ export default function FavoritesScreen({ navigation }: any) {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             style={{ width: '100%' }}
           >
-            <Pressable style={styles.sheet} onPress={() => {}}>
+            <Pressable
+              style={styles.sheet}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>Nova pasta</Text>
               <Text style={styles.sheetSubtitle}>Crie pastas para organizar seus favoritos.</Text>

@@ -2397,7 +2397,12 @@ export default function CifraView({
 
       <Modal visible={keyOpen} transparent animationType="fade" onRequestClose={closeKey}>
         <Pressable style={styles.sheetBackdrop} onPress={closeKey}>
-          <Pressable style={styles.keyModal} onPress={() => {}}>
+          <Pressable
+            style={styles.keyModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.keyModalTitle}>Tom</Text>
             <Text style={styles.keyModalSubtitle}>
               Tom original: <Text style={styles.keyModalStrong}>{capoValue ? transposeChord(song.original_key, capoValue) : song.original_key}</Text> · Atual:{' '}
