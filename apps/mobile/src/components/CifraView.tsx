@@ -361,6 +361,7 @@ export default function CifraView({
   const optionsTranslateY = useRef(new Animated.Value(optionsSheetHeight)).current;
   const optionsBackdropOpacity = useRef(new Animated.Value(0)).current;
   const optionsDragStartY = useRef(0);
+  const optionsSeqRef = useRef(0);
 
   const [semitones, setSemitones] = useState(0);
   const [fontScale, setFontScale] = useState(1);
@@ -992,6 +993,8 @@ export default function CifraView({
 
   const closeOptions = (afterCloseOrEvent?: unknown) => {
     const afterClose = typeof afterCloseOrEvent === 'function' ? (afterCloseOrEvent as () => void) : undefined;
+    optionsSeqRef.current += 1;
+    const seq = optionsSeqRef.current;
     setOptionsInteractable(false);
     optionsTranslateY.stopAnimation();
     optionsBackdropOpacity.stopAnimation();
@@ -999,6 +1002,7 @@ export default function CifraView({
     const finalize = () => {
       if (finalized) return;
       finalized = true;
+      if (seq !== optionsSeqRef.current) return;
       setOptionsOpen(false);
       if (afterClose) requestAnimationFrame(afterClose);
     };
@@ -1025,9 +1029,14 @@ export default function CifraView({
   };
 
   const openOptions = () => {
+    optionsSeqRef.current += 1;
+    const seq = optionsSeqRef.current;
     setOptionsInteractable(true);
     setOptionsOpen(true);
-    requestAnimationFrame(() => animateOptionsIn());
+    requestAnimationFrame(() => {
+      if (seq !== optionsSeqRef.current) return;
+      animateOptionsIn();
+    });
   };
   const openOptionsToTabs = () => {
     openOptions();
