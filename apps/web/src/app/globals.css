@@ -874,6 +874,11 @@ header {
   padding: 10px 14px;
 }
 
+.button.favorite-pill.favorite-icon-only {
+  padding: 10px 12px;
+  gap: 0;
+}
+
 .button.favorite-pill:hover {
   filter: none;
   background: #f5f5f5;

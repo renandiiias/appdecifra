@@ -140,9 +140,6 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
             <button className="side-button active" type="button">
               Videoaula
             </button>
-            <button className="side-button" type="button" onClick={() => router.push('/manutencao')}>
-              Simplificar cifra
-            </button>
             <button
               className={autoScroll ? 'side-button side-button--toggled' : 'side-button'}
               type="button"
@@ -261,11 +258,6 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
             </div>
 
             <div className="song-meta-actions">
-              <button className="pill-outline song-dropdown" type="button" onClick={() => router.push('/manutencao')}>
-                <span className="song-dropdown__check">✓</span>
-                Cifra: Principal (violão e guitarra)
-                <span className="song-dropdown__chevron">▾</span>
-              </button>
               <FavoriteButton songId={song.id} className="favorite-pill" />
             </div>
 

@@ -349,10 +349,12 @@ export default function CifraView({
   const scrollRef = useRef<ScrollView | null>(null);
   const scrollY = useRef(0);
 
-  const [mode, setMode] = useState<'Principal' | 'Simplificada'>('Simplificada');
   const [lyricsOnly, setLyricsOnly] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
+  const optionsScrollRef = useRef<ScrollView | null>(null);
+  const tabsOptionsCardYRef = useRef<number | null>(null);
+  const tabsToggleRowYRef = useRef<number | null>(null);
   const optionsSheetHeight = Math.round(windowHeight * 0.52);
   const optionsTranslateY = useRef(new Animated.Value(optionsSheetHeight)).current;
   const optionsBackdropOpacity = useRef(new Animated.Value(0)).current;
@@ -360,6 +362,8 @@ export default function CifraView({
 
   const [semitones, setSemitones] = useState(0);
   const [fontScale, setFontScale] = useState(1);
+  const userAdjustedFontScaleRef = useRef(false);
+  const didAutoFitRef = useRef<string | null>(null);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(0.75);
   const [speedTrackWidth, setSpeedTrackWidth] = useState(0);
@@ -420,6 +424,14 @@ export default function CifraView({
   const pinchBaseScale = useRef(1);
   const pinchLastScale = useRef(1);
   const pinchRaf = useRef<number | null>(null);
+
+  useEffect(() => {
+    userAdjustedFontScaleRef.current = false;
+    didAutoFitRef.current = null;
+    pinchBaseScale.current = 1;
+    pinchLastScale.current = 1;
+    setFontScale(1);
+  }, [song.id]);
 
   useEffect(() => {
     setCapoValue(song.capo ?? 0);
@@ -532,6 +544,37 @@ export default function CifraView({
   const reviewers = parsedOriginal.reviewers.length ? parsedOriginal.reviewers : parsedRender.reviewers;
   const speedPercent = Math.round((scrollSpeed / 0.75) * 100);
   const speedNorm = clamp((scrollSpeed - SPEED_MIN) / (SPEED_MAX - SPEED_MIN), 0, 1);
+
+  useEffect(() => {
+    if (userAdjustedFontScaleRef.current) return;
+    if (didAutoFitRef.current === song.id) return;
+    if (semitones !== 0) return;
+
+    const firstBlank = lines.findIndex((line) => line.trim().length === 0);
+    const end = firstBlank === -1 ? Math.min(lines.length, transposedTokens.length) : Math.min(firstBlank, transposedTokens.length);
+    if (end <= 0) return;
+
+    let maxLen = 0;
+    for (let i = 0; i < end; i += 1) {
+      const lineTokens = transposedTokens[i];
+      if (!lineTokens) continue;
+      const text = lineTokens.map((t) => t.value).join('');
+      maxLen = Math.max(maxLen, text.length);
+    }
+
+    // Fit only against the first stanza to reduce line wraps on initial view.
+    const available = windowWidth - 32; // sheet paddingHorizontal = 16 * 2
+    const baseFontSize = 18;
+    const approxCharWidth = 0.62;
+    const fitScale = Math.min(1, available / (Math.max(1, maxLen) * approxCharWidth * baseFontSize));
+    const next = clamp(Number(fitScale.toFixed(2)), 0.55, 1.6);
+
+    if (next < 0.99) {
+      setFontScale(next);
+      pinchBaseScale.current = next;
+    }
+    didAutoFitRef.current = song.id;
+  }, [lines, song.id, semitones, transposedTokens, windowWidth]);
 
   const shareSong = async () => {
     try {
@@ -809,6 +852,25 @@ export default function CifraView({
     setOptionsOpen(true);
     requestAnimationFrame(() => animateOptionsIn());
   };
+  const openOptionsToTabs = () => {
+    openOptions();
+
+    const start = Date.now();
+    const tryScroll = () => {
+      const base = tabsOptionsCardYRef.current;
+      const row = tabsToggleRowYRef.current;
+      if (base !== null && row !== null) {
+        optionsScrollRef.current?.scrollTo({ y: Math.max(0, base + row - 24), animated: true });
+        return;
+      }
+      if (Date.now() - start < 1600) requestAnimationFrame(tryScroll);
+    };
+
+    // Wait for the sheet animation + layout pass before scrolling.
+    setTimeout(() => {
+      tryScroll();
+    }, 420);
+  };
   const openKey = () => setKeyOpen(true);
   const closeKey = () => setKeyOpen(false);
 
@@ -823,6 +885,7 @@ export default function CifraView({
     pinchRaf.current = requestAnimationFrame(() => {
       pinchRaf.current = null;
       const next = clamp(pinchBaseScale.current * pinchLastScale.current, 0.55, 1.6);
+      userAdjustedFontScaleRef.current = true;
       setFontScale(next);
     });
   }, []);
@@ -845,6 +908,7 @@ export default function CifraView({
 
       const next = clamp(pinchBaseScale.current * scale, 0.55, 1.6);
       pinchBaseScale.current = next;
+      userAdjustedFontScaleRef.current = true;
       setFontScale(next);
     },
     [fontScaleRef]
@@ -992,27 +1056,14 @@ export default function CifraView({
             contentContainerStyle={styles.modeRow}
           >
             <TouchableOpacity
-              style={[styles.modePill, mode === 'Principal' ? styles.modePillActive : null]}
-              onPress={() => setMode('Principal')}
-            >
-              <Text style={mode === 'Principal' ? styles.modeTextActive : styles.modeText}>Principal</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modePill, mode === 'Simplificada' ? styles.modePillActive : null]}
-              onPress={() => setMode('Simplificada')}
-            >
-              <Text style={mode === 'Simplificada' ? styles.modeTextActive : styles.modeText}>Simplificada</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.modeIconPill}
               onPress={() => onToggleFavorite?.()}
               disabled={!onToggleFavorite}
             >
               <Ionicons
-                name={isFavorite ? 'bookmark' : 'bookmark-outline'}
+                name={isFavorite ? 'heart' : 'heart-outline'}
                 size={18}
-                color={isFavorite ? colors.text : colors.muted}
+                color={isFavorite ? colors.accent : colors.muted}
               />
             </TouchableOpacity>
 
@@ -1021,13 +1072,6 @@ export default function CifraView({
               onPress={() => setLyricsOnly((v) => !v)}
             >
               <Text style={lyricsOnly ? styles.modeTextActive : styles.modeText}>Letra</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.modePill} onPress={openOptions}>
-              <View style={styles.modeMoreRow}>
-                <Text style={styles.modeText}>Mais</Text>
-                <Ionicons name="chevron-down" size={14} color={colors.muted} />
-              </View>
             </TouchableOpacity>
           </ScrollView>
 
@@ -1112,10 +1156,11 @@ export default function CifraView({
             </ScrollView>
           ) : null}
 
-          <View style={styles.keyRow}>
+          <TouchableOpacity style={styles.keyRow} onPress={openKey} activeOpacity={0.85}>
             <Text style={styles.keyLabel}>Tom:</Text>
             <Text style={styles.keyValue}>{soundingKey}</Text>
-          </View>
+            <Ionicons name="chevron-down" size={18} color={colors.muted} />
+          </TouchableOpacity>
 
           {capoValue ? (
             <Text style={styles.keySub}>Forma dos acordes no tom de {shapeKey}</Text>
@@ -1208,7 +1253,13 @@ export default function CifraView({
                   const tabFontSize = clamp(Math.min(desiredFontSize, fitFontSize), 9, desiredFontSize);
 
                   rendered.push(
-                    <View key={`tab-${index}`} style={styles.tabScroll}>
+                    <Pressable
+                      key={`tab-${index}`}
+                      style={styles.tabScroll}
+                      onPress={openOptionsToTabs}
+                      accessibilityRole="button"
+                      accessibilityLabel="Opções de tablaturas"
+                    >
                       <Text
                         style={[
                           styles.tabText,
@@ -1221,7 +1272,7 @@ export default function CifraView({
                       >
                         {tabText}
                       </Text>
-                    </View>
+                    </Pressable>
                   );
                 }
 
@@ -1382,7 +1433,7 @@ export default function CifraView({
 
       <View style={[styles.floatingBar, { bottom: insets.bottom + 12 }]}>
         <TouchableOpacity style={styles.floatingItem} onPress={openKey}>
-          <Ionicons name="remove-circle-outline" size={20} color={colors.text} />
+          <Ionicons name="musical-notes-outline" size={20} color={colors.text} />
           <Text style={styles.floatingLabel}>Tom</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.floatingItem} onPress={() => setAutoScroll((v) => !v)}>
@@ -1420,6 +1471,9 @@ export default function CifraView({
               <View style={styles.sheetHandle} />
             </View>
             <ScrollView
+              ref={(node) => {
+                optionsScrollRef.current = node;
+              }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 8 }}
               bounces={false}
@@ -1429,9 +1483,13 @@ export default function CifraView({
               <View style={styles.quickRow}>
                 <TouchableOpacity style={styles.quickItem} onPress={() => onToggleFavorite?.()}>
                   <View style={styles.quickIcon}>
-                    <Ionicons name={isFavorite ? 'bookmark' : 'bookmark-outline'} size={18} color={colors.text} />
+                    <Ionicons
+                      name={isFavorite ? 'heart' : 'heart-outline'}
+                      size={18}
+                      color={isFavorite ? colors.accent : colors.text}
+                    />
                   </View>
-                  <Text style={styles.quickLabel}>Salvo</Text>
+                  <Text style={styles.quickLabel}>Favorito</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.quickItem} onPress={shareSong}>
                   <View style={styles.quickIcon}>
@@ -1589,12 +1647,22 @@ export default function CifraView({
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.optionsCard}>
+              <View
+                style={styles.optionsCard}
+                onLayout={(event) => {
+                  tabsOptionsCardYRef.current = event.nativeEvent.layout.y;
+                }}
+              >
                 <View style={styles.toggleRow}>
                   <Text style={styles.toggleText}>Acordes para canhotos</Text>
                   <Switch value={leftHanded} onValueChange={setLeftHanded} />
                 </View>
-                <View style={styles.toggleRow}>
+                <View
+                  style={styles.toggleRow}
+                  onLayout={(event) => {
+                    tabsToggleRowYRef.current = event.nativeEvent.layout.y;
+                  }}
+                >
                   <Text style={styles.toggleText}>Tablaturas nas cifras</Text>
                   <Switch value={showTabs} onValueChange={setShowTabs} />
                 </View>
@@ -1604,6 +1672,9 @@ export default function CifraView({
                 style={styles.resetButton}
                 onPress={() => {
                   setSemitones(0);
+                  userAdjustedFontScaleRef.current = false;
+                  didAutoFitRef.current = null;
+                  pinchBaseScale.current = 1;
                   setFontScale(1);
                   setAutoScroll(false);
                   setScrollSpeed(0.75);
@@ -1753,14 +1824,20 @@ export default function CifraView({
               <View style={styles.textSizeRow}>
                 <TouchableOpacity
                   style={styles.textSizeButton}
-                  onPress={() => setFontScale((v) => clamp(Number((v - 0.05).toFixed(2)), 0.55, 1.6))}
+                  onPress={() => {
+                    userAdjustedFontScaleRef.current = true;
+                    setFontScale((v) => clamp(Number((v - 0.05).toFixed(2)), 0.55, 1.6));
+                  }}
                 >
                   <Ionicons name="remove" size={18} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={styles.textSizeValue}>{textSizePercent}%</Text>
                 <TouchableOpacity
                   style={styles.textSizeButton}
-                  onPress={() => setFontScale((v) => clamp(Number((v + 0.05).toFixed(2)), 0.55, 1.6))}
+                  onPress={() => {
+                    userAdjustedFontScaleRef.current = true;
+                    setFontScale((v) => clamp(Number((v + 0.05).toFixed(2)), 0.55, 1.6));
+                  }}
                 >
                   <Ionicons name="add" size={18} color={colors.text} />
                 </TouchableOpacity>
@@ -1773,7 +1850,10 @@ export default function CifraView({
                     <TouchableOpacity
                       key={`pct-${pct}`}
                       style={[styles.presetChip, selected ? styles.presetChipActive : null]}
-                      onPress={() => setFontScale(clamp(pct / 100, 0.55, 1.6))}
+                      onPress={() => {
+                        userAdjustedFontScaleRef.current = true;
+                        setFontScale(clamp(pct / 100, 0.55, 1.6));
+                      }}
                       activeOpacity={0.85}
                     >
                       <Text style={selected ? styles.presetChipTextActive : styles.presetChipText}>{pct}%</Text>
@@ -2241,16 +2321,18 @@ const styles = StyleSheet.create({
   actionCardText: { color: colors.muted, fontWeight: '600', marginTop: 6, lineHeight: 20 },
   actionCardButton: {
     marginTop: 12,
-    backgroundColor: colors.accent,
-    paddingVertical: 12,
+    backgroundColor: colors.accentSoft,
+    paddingVertical: 10,
     borderRadius: radii.pill,
-    alignItems: 'center'
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border
   },
-  actionCardButtonText: { color: '#fff', fontWeight: '900' },
+  actionCardButtonText: { color: colors.accent, fontWeight: '900' },
   actionCardButtonSecondary: {
     marginTop: 12,
-    backgroundColor: '#f2f2f2',
-    paddingVertical: 12,
+    backgroundColor: colors.card,
+    paddingVertical: 10,
     borderRadius: radii.pill,
     alignItems: 'center',
     borderWidth: 1,
