@@ -146,6 +146,7 @@ export default async function HomePage() {
 
   return (
     <div className="page">
+      <h1 className="sr-only">Cifra Cristã: cifras, artistas e recursos para tocar no louvor</h1>
       <section className="category-strip">
         {categoryTabs.map((tab, index) => (
           <Link
