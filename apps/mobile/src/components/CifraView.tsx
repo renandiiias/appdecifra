@@ -352,6 +352,7 @@ export default function CifraView({
 
   const [lyricsOnly, setLyricsOnly] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [optionsInteractable, setOptionsInteractable] = useState(false);
   const [keyOpen, setKeyOpen] = useState(false);
   const optionsScrollRef = useRef<ScrollView | null>(null);
   const tabsOptionsCardYRef = useRef<number | null>(null);
@@ -970,6 +971,8 @@ export default function CifraView({
   }, [ensureLoggedIn, artistName, personalDraftText, song.id, song.title]);
 
   const animateOptionsIn = () => {
+    optionsTranslateY.stopAnimation();
+    optionsBackdropOpacity.stopAnimation();
     optionsTranslateY.setValue(optionsSheetHeight);
     optionsBackdropOpacity.setValue(0);
     Animated.parallel([
@@ -989,6 +992,17 @@ export default function CifraView({
 
   const closeOptions = (afterCloseOrEvent?: unknown) => {
     const afterClose = typeof afterCloseOrEvent === 'function' ? (afterCloseOrEvent as () => void) : undefined;
+    setOptionsInteractable(false);
+    optionsTranslateY.stopAnimation();
+    optionsBackdropOpacity.stopAnimation();
+    let finalized = false;
+    const finalize = () => {
+      if (finalized) return;
+      finalized = true;
+      setOptionsOpen(false);
+      if (afterClose) requestAnimationFrame(afterClose);
+    };
+    const fallback = setTimeout(finalize, 260);
     Animated.parallel([
       Animated.timing(optionsTranslateY, {
         toValue: optionsSheetHeight,
@@ -1001,13 +1015,17 @@ export default function CifraView({
         useNativeDriver: true
       })
     ]).start(({ finished }) => {
-      if (!finished) return;
-      setOptionsOpen(false);
-      if (afterClose) requestAnimationFrame(afterClose);
+      clearTimeout(fallback);
+      if (!finished) {
+        finalize();
+        return;
+      }
+      finalize();
     });
   };
 
   const openOptions = () => {
+    setOptionsInteractable(true);
     setOptionsOpen(true);
     requestAnimationFrame(() => animateOptionsIn());
   };
@@ -1575,7 +1593,11 @@ export default function CifraView({
       <Modal visible={optionsOpen} transparent animationType="none" onRequestClose={closeOptions}>
         <View style={styles.modalRoot}>
           <Animated.View style={[styles.modalBackdrop, { opacity: optionsBackdropOpacity }]} />
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={closeOptions} />
+          <Pressable
+            style={StyleSheet.absoluteFillObject}
+            onPress={closeOptions}
+            pointerEvents={optionsInteractable ? 'auto' : 'none'}
+          />
           <Animated.View
             style={[
               styles.optionsSheet,
@@ -1585,6 +1607,7 @@ export default function CifraView({
                 transform: [{ translateY: optionsTranslateY }]
               }
             ]}
+            pointerEvents={optionsInteractable ? 'auto' : 'none'}
           >
             <View style={styles.sheetGrabArea} {...optionsPanResponder.panHandlers}>
               <View style={styles.sheetHandle} />
