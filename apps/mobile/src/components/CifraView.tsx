@@ -1829,7 +1829,12 @@ export default function CifraView({
         onRequestClose={() => setInstrumentOpen(false)}
       >
         <Pressable style={styles.sheetBackdrop} onPress={() => setInstrumentOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Diagramas</Text>
             <View style={styles.panelCard}>
               <View style={styles.toggleRow}>
@@ -1876,7 +1881,12 @@ export default function CifraView({
 
       <Modal visible={tuningOpen} transparent animationType="fade" onRequestClose={() => setTuningOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setTuningOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Afinação</Text>
             <View style={styles.panelCard}>
               {([
@@ -1912,7 +1922,12 @@ export default function CifraView({
 
       <Modal visible={capoOpen} transparent animationType="fade" onRequestClose={() => setCapoOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setCapoOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Capotraste</Text>
             <View style={styles.panelCard}>
               <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
@@ -1945,7 +1960,12 @@ export default function CifraView({
 
       <Modal visible={textSizeOpen} transparent animationType="fade" onRequestClose={() => setTextSizeOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setTextSizeOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Aparência do texto</Text>
             <View style={styles.panelCard}>
               <View style={styles.textSizeRow}>
@@ -1998,7 +2018,12 @@ export default function CifraView({
 
       <Modal visible={metronomeOpen} transparent animationType="fade" onRequestClose={() => setMetronomeOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setMetronomeOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Metrônomo</Text>
             <View style={styles.formCard}>
               <Text style={styles.formHint}>
@@ -2059,7 +2084,9 @@ export default function CifraView({
                   paddingBottom: Math.max(insets.bottom, 12)
                 }
               ]}
-              onPress={() => {}}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
             >
               <View style={styles.editorHeaderRow}>
                 <View style={{ flex: 1, gap: 4 }}>
@@ -2145,7 +2172,12 @@ export default function CifraView({
 
       <Modal visible={videoLessonOpen} transparent animationType="fade" onRequestClose={() => setVideoLessonOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setVideoLessonOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Adicionar videoaula</Text>
             <View style={styles.formCard}>
               <Text style={styles.formHint}>
@@ -2208,7 +2240,12 @@ export default function CifraView({
 
       <Modal visible={claimOpen} transparent animationType="fade" onRequestClose={() => setClaimOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setClaimOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Reivindicar música</Text>
             <View style={styles.formCard}>
               <Text style={styles.formHint}>
@@ -2277,7 +2314,12 @@ export default function CifraView({
 
       <Modal visible={suggestOpen} transparent animationType="fade" onRequestClose={() => setSuggestOpen(false)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSuggestOpen(false)}>
-          <Pressable style={styles.panelModal} onPress={() => {}}>
+          <Pressable
+            style={styles.panelModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.panelTitle}>Sugerir alteração</Text>
             <View style={styles.formCard}>
               <Text style={styles.formHint}>
@@ -2325,7 +2367,12 @@ export default function CifraView({
 
       <Modal visible={!!selectedChord} transparent animationType="fade" onRequestClose={() => setSelectedChord(null)}>
         <Pressable style={styles.sheetBackdrop} onPress={() => setSelectedChord(null)}>
-          <Pressable style={styles.chordModal} onPress={() => {}}>
+          <Pressable
+            style={styles.chordModal}
+            onPress={(event) => {
+              event.stopPropagation();
+            }}
+          >
             <Text style={styles.chordModalTitle}>{selectedChord}</Text>
             {selectedChord ? (
               instrument === 'Teclado' ? (

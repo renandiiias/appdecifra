@@ -171,7 +171,12 @@ export default function SongScreen({ route, navigation }: any) {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             style={{ width: '100%' }}
           >
-            <Pressable style={styles.sheet} onPress={() => {}}>
+            <Pressable
+              style={styles.sheet}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <Text style={styles.sheetTitle}>Salvar em</Text>
               <Text style={styles.sheetSubtitle}>Escolha uma pasta para organizar seus favoritos.</Text>
 
