@@ -96,6 +96,32 @@ Formato esperado do CSV:
 title,artist,lyrics_chords,original_key,tuning,capo,category
 ```
 
+## Sync live do scraper (lotes de 1000)
+
+Para subir artistas + musicas em paralelo ao scrape (sem parar o scraper), use:
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+./scripts/run_live_cifraclub_sync.sh --dataset-dir /srv/data/cifraclub-full-v3
+```
+
+Comportamento:
+
+- Le novas musicas `status='done'` dos `sqlite` em `/db/letter_*.sqlite3`.
+- Sincroniza em lotes (`--batch-size`, default `1000`).
+- Persiste checkpoint em `<dataset-dir>/supabase_sync/state.json`.
+- Gera categorizacao de secoes (intro/verse/pre_chorus/chorus/bridge/etc) em:
+  `<dataset-dir>/supabase_sync/sections/<artist>/<song>.json`.
+
+Modo one-shot (uma rodada):
+
+```bash
+SUPABASE_URL=... \
+SUPABASE_SERVICE_ROLE_KEY=... \
+./scripts/run_live_cifraclub_sync.sh --dataset-dir /srv/data/cifraclub-full-v3 --once
+```
+
 ## Testes de transposição
 
 ```bash
@@ -112,4 +138,3 @@ pnpm test
 - Favoritos ficam em `AsyncStorage`.
 - As cifras favoritas são cacheadas para abrir offline.
 - Quando a conexão retorna, o app sincroniza com o Supabase.
-

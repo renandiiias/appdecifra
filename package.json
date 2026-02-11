@@ -8,14 +8,21 @@
   ],
   "scripts": {
     "dev:web": "corepack pnpm --filter @cifras/web dev",
-    "dev:mobile": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start",
-    "dev:mobile:clear": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear",
-    "dev:mobile:tunnel": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:tunnel",
-    "dev:mobile:tunnel:clear": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear:tunnel",
+    "dev:mobile": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start",
+    "dev:mobile:clear": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear",
+    "dev:mobile:lan": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:lan",
+    "dev:mobile:lan:clear": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear:lan",
+    "dev:mobile:8082": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:8082",
+    "dev:mobile:8082:clear": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear:8082",
+    "dev:mobile:lan:8082": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:lan:8082",
+    "dev:mobile:tunnel": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:tunnel",
+    "dev:mobile:tunnel:clear": "PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear:tunnel",
     "test": "corepack pnpm --filter @cifras/shared test",
     "import:txt": "node scripts/import-local-txt.mjs",
+    "import:chords": "node scripts/import-chords-to-supabase.mjs",
     "import:export:one": "node scripts/import-supabase-export-one.mjs",
-    "import:export:all": "node scripts/import-supabase-export-all.mjs"
+    "import:export:all": "node scripts/import-supabase-export-all.mjs",
+    "clean:mobile": "corepack pnpm --filter @cifras/mobile deep:clean"
   },
   "devDependencies": {
     "csv-parse": "^6.1.0"

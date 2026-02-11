@@ -1,5 +1,6 @@
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { getChordShapeForInstrument, type Instrument } from '@cifras/chords';
+import { fetchChordShape, type ChordShape, type Instrument } from '../lib/api';
 import { colors } from '../lib/theme';
 
 type DiagramVariant = 'inline' | 'modal';
@@ -164,10 +165,35 @@ export default function ChordDiagram({
   leftHanded?: boolean;
   variant?: DiagramVariant;
 }) {
-  const shape = getChordShapeForInstrument(chord, instrument);
-  if (!shape) {
+  const [shape, setShape] = useState<ChordShape | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    fetchChordShape(chord, instrument)
+      .then((value) => {
+        if (!mounted) return;
+        setShape(value);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setShape(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [chord, instrument]);
+
+  if (!shape && !loading) {
     return <Text style={styles.muted}>Sem diagrama</Text>;
   }
+  if (!shape) return null;
 
   const cfg = getConfig(variant);
   const showCapoBoxes = variant === 'modal';

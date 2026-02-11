@@ -25,7 +25,6 @@ import {
 } from 'react-native';
 import { PinchGestureHandler, State } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Instrument } from '@cifras/chords';
 import {
   encodeSharedSongVersion,
   extractChords,
@@ -35,6 +34,7 @@ import {
   transposeTokens
 } from '@cifras/shared';
 import ChordDiagram from './ChordDiagram';
+import type { Instrument } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { colors, radii, shadows } from '../lib/theme';
 

@@ -721,6 +721,7 @@ export default function LoginScreen() {
       >
         <View style={styles.pageHeader}>
           <Text style={styles.pageTitle}>Conta</Text>
+          <Text style={styles.pageSubtitle}>Gerencie seu perfil e preferencias.</Text>
         </View>
 
         {userEmail ? (
@@ -749,20 +750,22 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.profileButtonsRow}>
-                <TouchableOpacity style={styles.pillPrimary} onPress={updateName} activeOpacity={0.9}>
+              <View style={styles.profilePrimaryCtaRow}>
+                <TouchableOpacity style={[styles.pillPrimary, styles.pillPrimaryWide]} onPress={updateName} activeOpacity={0.9}>
                   <Ionicons name="checkmark" size={16} color="#fff" />
                   <Text style={styles.pillPrimaryText}>Salvar</Text>
                 </TouchableOpacity>
+              </View>
 
-                <TouchableOpacity style={styles.pillSecondary} onPress={openChurch} activeOpacity={0.9}>
+              <View style={styles.profileButtonsRow}>
+                <TouchableOpacity style={[styles.pillSecondary, styles.pillSecondarySoft]} onPress={openChurch} activeOpacity={0.9}>
                   <Ionicons name="business-outline" size={16} color={colors.text} />
                   <Text style={styles.pillSecondaryText}>
                     {churchProfile?.name ? 'Minha igreja' : 'Cadastrar igreja'}
                   </Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.pillSecondary} onPress={openGroup} activeOpacity={0.9}>
+                <TouchableOpacity style={[styles.pillSecondary, styles.pillSecondarySoft]} onPress={openGroup} activeOpacity={0.9}>
                   <Ionicons name="people-outline" size={16} color={colors.text} />
                   <Text style={styles.pillSecondaryText}>Grupo de louvor</Text>
                 </TouchableOpacity>
@@ -786,7 +789,7 @@ export default function LoginScreen() {
               )}
             </View>
 
-            <View style={styles.card}>
+            <View style={[styles.card, styles.cardProminent]}>
               <Text style={styles.sectionTitle}>Perfil de artista</Text>
               <Text style={styles.subtitle}>
                 Reivindique seu artista/ministério para vincular as músicas ao seu perfil.
@@ -861,10 +864,10 @@ export default function LoginScreen() {
               ) : null}
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Feedback</Text>
+            <View style={styles.menuGroup}>
+              <Text style={styles.menuGroupTitle}>Feedback</Text>
               <TouchableOpacity
-                style={styles.actionRow}
+                style={[styles.menuRow, styles.menuRowFirst]}
                 onPress={() =>
                   openSupportEmail(
                     'Feedback - Cifra Cristã (App)',
@@ -873,13 +876,13 @@ export default function LoginScreen() {
                 }
               >
                 <View style={styles.actionLeft}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={18} color={colors.text} />
-                  <Text style={styles.actionText}>Enviar feedback</Text>
+                  <Ionicons name="chatbubble-ellipses-outline" size={22} color={colors.text} />
+                  <Text style={styles.menuRowText}>Enviar feedback</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.actionRow}
+                style={styles.menuRow}
                 onPress={() =>
                   openSupportEmail(
                     'Bug - Cifra Cristã (App)',
@@ -888,13 +891,13 @@ export default function LoginScreen() {
                 }
               >
                 <View style={styles.actionLeft}>
-                  <Ionicons name="bug-outline" size={18} color={colors.text} />
-                  <Text style={styles.actionText}>Reportar problema</Text>
+                  <Ionicons name="bug-outline" size={22} color={colors.text} />
+                  <Text style={styles.menuRowText}>Reportar problema</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.actionRow}
+                style={styles.menuRow}
                 onPress={() =>
                   openSupportEmail(
                     'Sugestão de música - Cifra Cristã',
@@ -903,17 +906,21 @@ export default function LoginScreen() {
                 }
               >
                 <View style={styles.actionLeft}>
-                  <Ionicons name="musical-note-outline" size={18} color={colors.text} />
-                  <Text style={styles.actionText}>Sugerir música</Text>
+                  <Ionicons name="musical-note-outline" size={22} color={colors.text} />
+                  <Text style={styles.menuRowText}>Sugerir música</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Sessão</Text>
-              <TouchableOpacity style={[styles.buttonSecondary, { marginBottom: 0 }]} onPress={signOut}>
-                <Text style={styles.buttonTextSecondary}>Sair</Text>
+            <View style={styles.menuGroup}>
+              <Text style={styles.menuGroupTitle}>Sessão</Text>
+              <TouchableOpacity style={[styles.menuRow, styles.menuRowFirst]} onPress={signOut}>
+                <View style={styles.actionLeft}>
+                  <Ionicons name="log-out-outline" size={22} color={colors.text} />
+                  <Text style={styles.menuRowText}>Sair</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
               </TouchableOpacity>
             </View>
           </View>
@@ -1553,7 +1560,8 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   pageHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 10 },
-  pageTitle: { fontSize: 24, fontWeight: '900', color: colors.text },
+  pageTitle: { fontSize: 30, fontWeight: '900', color: colors.text, letterSpacing: -0.6 },
+  pageSubtitle: { marginTop: 4, color: colors.muted, fontWeight: '600' },
   profileCard: {
     marginHorizontal: 16,
     marginTop: 6,
@@ -1561,7 +1569,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#dbefe7',
     ...shadows.card
   },
   profileTopRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -1594,6 +1602,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border
   },
+  profilePrimaryCtaRow: { marginTop: 14 },
   profileButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   pillPrimary: {
     flexDirection: 'row',
@@ -1605,6 +1614,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: colors.accent
   },
+  pillPrimaryWide: { width: '100%' },
   pillPrimaryText: { color: '#fff', fontWeight: '900' },
   pillSecondary: {
     flexDirection: 'row',
@@ -1618,6 +1628,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border
   },
+  pillSecondarySoft: {
+    flex: 1,
+    backgroundColor: '#f7f7f7'
+  },
   pillSecondaryText: { color: colors.text, fontWeight: '900' },
   profileHintRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
   profileHintText: { color: colors.muted, fontWeight: '700', flex: 1 },
@@ -1630,7 +1644,32 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card
   },
+  cardProminent: {
+    marginTop: 0
+  },
+  cardMuted: {
+    backgroundColor: '#fcfcfc',
+    shadowOpacity: 0.02
+  },
   sectionTitle: { fontSize: 16, fontWeight: '900', marginBottom: 10, color: colors.text },
+  sectionTitleMuted: { fontSize: 14, marginBottom: 6 },
+  menuGroup: {
+    marginHorizontal: 16,
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    paddingBottom: 4,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border
+  },
+  menuGroupTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: colors.text,
+    marginBottom: 2,
+    paddingHorizontal: 8
+  },
   subtitle: { color: colors.muted, marginBottom: 12 },
   row: {
     flexDirection: 'row',
@@ -1682,8 +1721,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between'
   },
+  actionRowFirst: {
+    borderTopWidth: 0
+  },
   actionLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   actionText: { fontWeight: '800', color: colors.text },
+  actionTextMuted: { fontWeight: '700', color: colors.text },
+  menuRow: {
+    minHeight: 56,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 10
+  },
+  menuRowFirst: { borderTopWidth: 0 },
+  menuRowText: { fontSize: 16, fontWeight: '500', color: colors.text },
 
   toggleRow: {
     marginTop: 8,

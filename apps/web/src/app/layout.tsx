@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/afinador">Aprenda</Link>
                 <Link href="/enviar-cifra">Enviar cifra</Link>
                 <Link href="/artistas">Mais</Link>
+                <Link href="/manutencao">Ops Live</Link>
               </nav>
               <div className="nav-actions">
                 <ThemeToggle />

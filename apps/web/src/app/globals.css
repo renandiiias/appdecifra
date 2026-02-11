@@ -640,6 +640,173 @@ header {
   color: var(--muted);
 }
 
+.ingestion-live {
+  display: grid;
+  gap: 16px;
+}
+
+.ingestion-live__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.ingestion-live__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.ingestion-live__subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.ingestion-live__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.ingestion-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.ingestion-pill.ok {
+  background: #e8fff4;
+  color: #126a43;
+}
+
+.ingestion-pill.warn {
+  background: #fff6e8;
+  color: #8b4a00;
+}
+
+.ingestion-meta-line {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ingestion-error {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff1f0;
+  color: #a61d24;
+  border: 1px solid #ffd0cc;
+}
+
+.ingestion-loading {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.ingestion-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.ingestion-grid--infra {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+.ingestion-kpi {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--bg-alt);
+  display: grid;
+  gap: 8px;
+}
+
+.ingestion-kpi h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.ingestion-kpi strong {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.ingestion-progress-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.ingestion-progress-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: var(--bg-alt);
+  display: grid;
+  gap: 8px;
+}
+
+.ingestion-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+}
+
+.ingestion-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #ececec;
+  overflow: hidden;
+}
+
+.ingestion-progress-track > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #0c7a50, #34d399);
+  border-radius: inherit;
+  transition: width 0.35s ease;
+}
+
+.ingestion-progress-card small {
+  color: var(--muted);
+}
+
+.ingestion-cycle {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.ingestion-cycle h3 {
+  margin: 0;
+}
+
+.ingestion-cycle-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  font-size: 14px;
+  color: #252525;
+}
+
 .breadcrumb {
   font-size: 13px;
   color: var(--muted);
