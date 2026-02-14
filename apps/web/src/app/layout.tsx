@@ -34,10 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </form>
             <div className="navbar-right">
               <nav className="nav-links">
-                <Link href="/musicas">Listas</Link>
-                <Link href="/afinador">Aprenda</Link>
+                <Link href="/musicas">Músicas</Link>
+                <Link href="/afinador">Afinador</Link>
                 <Link href="/enviar-cifra">Enviar cifra</Link>
-                <Link href="/artistas">Mais</Link>
+                <Link href="/artistas">Artistas</Link>
               </nav>
               <div className="nav-actions">
                 <ThemeToggle />

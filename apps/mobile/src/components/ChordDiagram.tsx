@@ -262,7 +262,7 @@ export default function ChordDiagram({
           />
         ) : null}
 
-        {positions.map((pos, stringIndex) => {
+        {positions.map((pos: number, stringIndex: number) => {
           if (pos <= 0) return null;
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
           const fret = pos - baseFret + 1;
@@ -288,7 +288,7 @@ export default function ChordDiagram({
           );
         })}
 
-        {positions.map((pos, stringIndex) => {
+        {positions.map((pos: number, stringIndex: number) => {
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
           if (pos === -1) {
             return (

@@ -7,8 +7,7 @@ export const revalidate = 60;
 const heroImages = [
   'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=900&q=80'
+  'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=900&q=80'
 ];
 
 const chartImages = [
@@ -29,70 +28,7 @@ const artistImages = [
   'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=260&q=80'
 ];
 
-const lessons = [
-  {
-    title: 'Porque Ele Vive',
-    meta: 'Hinos (Simplificada) | Como tocar no violao',
-    tag: 'Simplificada',
-    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Rendido Estou',
-    meta: 'Adoração (Simplificada) | Como tocar no violao',
-    tag: 'Simplificada',
-    image: 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Ao Único',
-    meta: 'Louvor (Completa) | Como tocar no violao',
-    tag: 'Completa',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=700&q=80'
-  }
-];
-
-const courses = [
-  {
-    title: 'Violão Iniciante',
-    meta: 'Fundamentos para tocar no louvor',
-    image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Violão Intermediário',
-    meta: 'Levadas, dinâmica e harmonia no culto',
-    image: 'https://images.unsplash.com/photo-1522199755839-a2bacb67c546?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Fingerstyle',
-    meta: 'Arranjos instrumentais para hinos',
-    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Violão Gospel',
-    meta: 'Ritmos e levadas para louvor',
-    image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=700&q=80'
-  }
-];
-
-const articles = [
-  {
-    title: '5 hinos para tocar no violão (nível iniciante)',
-    image: 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Como escolher a tonalidade para a congregação',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Capotraste no louvor: quando usar e como soar bem',
-    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Dinâmica no louvor: tocando com sensibilidade',
-    image: 'https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=700&q=80'
-  }
-];
-
-const categoryTabs = ['Todos', 'Louvor', 'Adoração', 'Hinos', 'Congregacional', 'Mais'];
+const categoryTabs = ['Todos', 'Louvor', 'Adoração', 'Hinos', 'Congregacional'];
 const letters = 'A B C D E F G H I J K L M N O P Q R S T U V W X Y Z #'.split(' ');
 
 type SongSummary = {
@@ -118,31 +54,20 @@ export default async function HomePage() {
   const popularArtists = artists.slice(0, 8);
   const featuredSongs = songs.slice(0, 3);
 
-  const heroCards = [
-    ...featuredSongs.map((song, index) => ({
-      title: song.title,
-      subtitle: song.artists?.name ?? 'Artista',
-      image: heroImages[index % heroImages.length],
-      href: `/cifra/${song.id}`,
-      cta: 'Aprender a tocar',
-      tag: index === 2 ? 'Guitarra' : null,
-      gradient:
-        index === 0
-          ? 'linear-gradient(140deg, #4a1d00, #7b2f00)'
-          : index === 1
-            ? 'linear-gradient(140deg, #262626, #3a3a3a)'
-            : 'linear-gradient(140deg, #5a2a00, #a85a14)'
-    })),
-    {
-      title: 'Dicas, técnicas e curiosidades do mundo da música',
-      subtitle: 'Blog da Cifra Cristã',
-      image: heroImages[3],
-      href: '/manutencao',
-      cta: 'Blog do Cifras',
-      tag: null,
-      gradient: 'linear-gradient(140deg, #6b3a00, #c9751f)'
-    }
-  ];
+	  const heroCards = featuredSongs.map((song, index) => ({
+	    title: song.title,
+	    subtitle: song.artists?.name ?? 'Artista',
+	    image: heroImages[index % heroImages.length],
+	    href: `/cifra/${song.id}`,
+	    cta: 'Abrir cifra',
+	    tag: index === 2 ? 'Guitarra' : null,
+	    gradient:
+	      index === 0
+	        ? 'linear-gradient(140deg, #4a1d00, #7b2f00)'
+        : index === 1
+          ? 'linear-gradient(140deg, #262626, #3a3a3a)'
+          : 'linear-gradient(140deg, #5a2a00, #a85a14)'
+  }));
 
   return (
     <div className="page">
@@ -151,11 +76,10 @@ export default async function HomePage() {
         {categoryTabs.map((tab, index) => (
           <Link
             key={tab}
-            href={tab === 'Mais' ? '/manutencao' : '/musicas'}
+            href="/musicas"
             className={`category-tab ${index === 0 ? 'active' : ''}`}
           >
             {tab}
-            {tab === 'Mais' ? <span className="chevron">▼</span> : null}
           </Link>
         ))}
       </section>
@@ -237,82 +161,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="home-section">
-        <div className="section-header">
-          <h2 className="section-title">Novas aulas</h2>
-          <Link className="section-action" href="/manutencao">Ver mais</Link>
-        </div>
-        <div className="carousel-row">
-          {lessons.map((lesson) => (
-            <Link key={lesson.title} href="/manutencao" className="lesson-card">
-              <div className="lesson-media">
-                <img src={lesson.image} alt="" />
-                <span className="lesson-tag">{lesson.tag}</span>
-              </div>
-              <div className="lesson-body">
-                <h3 className="lesson-title">{lesson.title}</h3>
-                <p className="lesson-meta">{lesson.meta}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-section">
-        <div className="section-header">
-          <h2 className="section-title">Cursos para você</h2>
-          <Link className="section-action" href="/manutencao">Liberar todos os cursos</Link>
-        </div>
-        <div className="carousel-row">
-          {courses.map((course) => (
-            <Link key={course.title} href="/manutencao" className="course-card">
-              <div className="course-media">
-                <img src={course.image} alt="" />
-              </div>
-              <div className="course-body">
-                <h3 className="course-title">{course.title}</h3>
-                <p className="course-meta">{course.meta}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="home-section">
-        <div className="section-header">
-          <h2 className="section-title">Leia também</h2>
-          <Link className="section-action" href="/manutencao">Ver mais</Link>
-        </div>
-        <div className="carousel-row">
-          {articles.map((article) => (
-            <Link key={article.title} href="/manutencao" className="article-card">
-              <div className="article-media">
-                <img src={article.image} alt="" />
-              </div>
-              <div className="article-body">
-                <h3 className="article-title">{article.title}</h3>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="cta-banner">
-        <img
-          className="cta-image"
-          src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1400&q=80"
-          alt=""
-        />
-        <div className="cta-overlay" />
-        <div className="cta-content">
-          <h2 className="cta-title">Toque mais e melhor, aprenda mais rápido e chegue mais longe</h2>
-          <p className="cta-text">
-            Assine a Cifra Cristã e tenha acesso ilimitado às melhores ferramentas e conteúdos para tocar.
-          </p>
-          <Link className="cta-button" href="/manutencao">Explorar os benefícios</Link>
-        </div>
-      </section>
-
       <section className="footer-links">
         <div>
           <div className="section-title">Todos os artistas</div>
@@ -328,7 +176,7 @@ export default async function HomePage() {
           <div className="section-title">Siga a Cifra Cristã</div>
           <div className="social-row">
             {['YouTube', 'Instagram', 'Facebook', 'TikTok', 'X'].map((social) => (
-              <Link key={social} href="/manutencao" className="social-pill">
+              <Link key={social} href="/artistas" className="social-pill">
                 {social}
               </Link>
             ))}
@@ -339,18 +187,18 @@ export default async function HomePage() {
             <div className="footer-title">Músicas</div>
             <Link className="footer-link" href="/musicas">Em alta</Link>
             <Link className="footer-link" href="/musicas">Estilos musicais</Link>
-            <Link className="footer-link" href="/manutencao">Novidades</Link>
-            <Link className="footer-link" href="/manutencao">Vídeos</Link>
+            <Link className="footer-link" href="/favoritos">Favoritos</Link>
+            <Link className="footer-link" href="/enviar-cifra">Enviar cifra</Link>
           </div>
           <div>
             <div className="footer-title">Ferramentas</div>
             <Link className="footer-link" href="/afinador">Afinador</Link>
-            <Link className="footer-link" href="/manutencao">Metrônomo</Link>
+            <Link className="footer-link" href="/musicas">Busca de cifras</Link>
           </div>
           <div>
             <div className="footer-title">Sobre o site</div>
-            <Link className="footer-link" href="/manutencao">Termos de uso e privacidade</Link>
-            <Link className="footer-link" href="/manutencao">Ajuda</Link>
+            <Link className="footer-link" href="/artistas">Artistas</Link>
+            <Link className="footer-link" href="/login">Conta</Link>
           </div>
         </div>
       </section>

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
   ActivityIndicator,
   FlatList,
   Image,
+  ImageBackground,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -14,13 +16,15 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
+import { normalizeSearch } from '@cifras/shared';
 import { fetchArtists, fetchSongs } from '../lib/api';
 import { colors, radii, shadows } from '../lib/theme';
 
 const heroImages = [
   'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=900&q=80',
-  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=900&q=80'
+  'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=900&q=80',
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=900&q=80'
 ];
 
 const chartImages = [
@@ -30,61 +34,91 @@ const chartImages = [
   'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=200&q=80'
 ];
 
-const lessonCards = [
-  {
-    title: 'Porque Ele Vive',
-    meta: 'Hinos (Simplificada)',
-    tag: 'Simplificada',
-    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Rendido Estou',
-    meta: 'Adoração (Simplificada)',
-    tag: 'Simplificada',
-    image: 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Ao Único',
-    meta: 'Louvor (Completa)',
-    tag: 'Completa',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=700&q=80'
-  }
+type CategoryTab = { label: string; value: string | null };
+
+// Values MUST match what's stored in Supabase (`songs.category`).
+const categoryTabs: CategoryTab[] = [
+  { label: 'Todos', value: null },
+  { label: 'Louvor', value: 'Louvor' },
+  { label: 'Adoração', value: 'Adoracao' },
+  { label: 'Hinos', value: 'Hinos' },
+  { label: 'Harpa Cristã', value: 'Harpa Crista' }
 ];
 
-const courseCards = [
+type CuratedSongRef = { title: string; artist?: string };
+type CuratedSelectionDef = {
+  id: string;
+  title: string;
+  subtitle: string;
+  songs: CuratedSongRef[];
+};
+
+const curatedSelectionDefs: CuratedSelectionDef[] = [
   {
-    title: 'Violão Iniciante',
-    meta: 'Fundamentos para tocar no louvor',
-    image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=700&q=80'
+    id: 'ceia',
+    title: 'Ceia: sangue e aliança',
+    subtitle: 'Pra aquele momento de gratidão e consagração.',
+    songs: [
+      { title: 'Nada Além do Sangue', artist: 'Fernandinho' },
+      { title: 'Seu Sangue', artist: 'Fernandinho' },
+      { title: 'O Poder da Cruz', artist: 'Aline Barros' },
+      { title: 'Ousado Amor', artist: 'Isaías Saad' },
+      { title: 'Pra Sempre', artist: 'Fernandinho' },
+      { title: 'Te Agradeço', artist: 'Diante do Trono' },
+      { title: 'Consagração', artist: 'Aline Barros' },
+      { title: 'Porque Ele Vive', artist: 'Harpa Cristã' },
+      { title: 'Ao Único', artist: 'Corinhos Evangélicos' }
+    ]
   },
   {
-    title: 'Violão Intermediário',
-    meta: 'Levadas, dinâmica e harmonia no culto',
-    image: 'https://images.unsplash.com/photo-1522199755839-a2bacb67c546?auto=format&fit=crop&w=700&q=80'
+    id: 'avivamento',
+    title: 'Avivamento: fogo no altar',
+    subtitle: 'Pra levantar a igreja e cantar com força.',
+    songs: [
+      { title: 'Atos 2', artist: 'Gabriela Rocha' },
+      { title: 'Caia Fogo', artist: 'Fernandinho' },
+      { title: 'Faz Chover', artist: 'Fernandinho' },
+      { title: 'Santo Espírito', artist: 'Laura Souguellis' },
+      { title: 'Espirito Santo', artist: 'Fernanda Brum' },
+      { title: 'Vem Me Buscar', artist: 'Jefferson & Suellen' },
+      { title: 'O Fogo Arderá', artist: 'Alexsander Lúcio' },
+      { title: 'Quero Conhecer Jesus', artist: 'Alessandro Vilas Boas' },
+      { title: 'Yeshua', artist: 'Fernandinho' }
+    ]
   },
   {
-    title: 'Fingerstyle',
-    meta: 'Arranjos instrumentais para hinos',
-    image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=700&q=80'
+    id: 'vigilia',
+    title: 'Vigília: madrugada de adoração',
+    subtitle: 'Pra ir fundo, sem pressa.',
+    songs: [
+      { title: 'Lugar Secreto', artist: 'Gabriela Rocha' },
+      { title: 'Oceanos (Oceans)', artist: 'Ana Nóbrega' },
+      { title: 'Santo Pra Sempre', artist: 'Gabriel Guedes' },
+      { title: 'Oh, Quão Lindo Esse Nome É (What A Beautiful Name)', artist: 'Ana Nóbrega' },
+      { title: 'A Casa É Sua', artist: 'Casa Worship' },
+      { title: 'Em Teus Braços', artist: 'Laura Souguellis' },
+      { title: 'Vim Para Adorar-Te', artist: 'Adoração & Adoradores' },
+      { title: 'Canção do Apocalipse', artist: 'Diante do Trono' },
+      { title: 'Nada Pode Calar Um Adorador', artist: 'Eyshila' }
+    ]
+  },
+  {
+    id: 'amigos',
+    title: 'Roda de violão',
+    subtitle: 'Pra tocar com amigos, sem complicar.',
+    songs: [
+      { title: 'Grande É o Senhor', artist: 'Adhemar de Campos' },
+      { title: 'Aclame Ao Senhor', artist: 'Diante do Trono' },
+      { title: 'Com Muito Louvor', artist: 'Cassiane' },
+      { title: 'Deus É Deus', artist: 'Delino Marçal' },
+      { title: 'Deus de Promessas  (part. Simone Mendes)', artist: 'Davi Sacer' },
+      { title: 'Ao Único', artist: 'Corinhos Evangélicos' },
+      { title: 'A Alegria Está No Coração', artist: 'Corinhos Evangélicos' },
+      { title: 'Poderoso Deus', artist: 'David Quinlan' },
+      { title: 'Preciso de Ti', artist: 'Diante do Trono' }
+    ]
   }
 ];
-
-const articleCards = [
-  {
-    title: '5 hinos para tocar no violão (iniciante)',
-    image: 'https://images.unsplash.com/photo-1485579149621-3123dd979885?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Como escolher a tonalidade para a congregação',
-    image: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?auto=format&fit=crop&w=700&q=80'
-  },
-  {
-    title: 'Capotraste no louvor: quando usar e como soar bem',
-    image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=700&q=80'
-  }
-];
-
-const categoryTabs = ['Todos', 'Louvor', 'Adoração', 'Hinos', 'Harpa Cristã', 'Mais'];
 
 export default function HomeScreen({ navigation }: any) {
   const [songs, setSongs] = useState<any[]>([]);
@@ -95,7 +129,7 @@ export default function HomeScreen({ navigation }: any) {
   const [songsError, setSongsError] = useState<string | null>(null);
   const [artistsError, setArtistsError] = useState<string | null>(null);
   const [offlineNotice, setOfflineNotice] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>('Todos');
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const tabBarHeight = useBottomTabBarHeight();
 
   const SONGS_CACHE_KEY = 'cifra_crista:songs_cache:v3';
@@ -180,13 +214,12 @@ export default function HomeScreen({ navigation }: any) {
     }, [loadAll])
   );
 
-  const songsFiltered =
-    activeCategory === 'Todos'
-      ? songs
-      : songs.filter((song) => {
-          if (!song.category) return activeCategory === 'Louvor';
-          return song.category === activeCategory;
-        });
+  const songsFiltered = activeCategory
+    ? songs.filter((song) => {
+        const cat = song.category ?? 'Louvor';
+        return cat === activeCategory;
+      })
+    : songs;
 
   const topSongs = songsFiltered.slice(0, 10);
   const heroSongs = songsFiltered.length >= 3 ? songsFiltered.slice(0, 3) : songs.slice(0, 3);
@@ -205,16 +238,49 @@ export default function HomeScreen({ navigation }: any) {
       songId: song.id,
       tag: index === 2 ? 'Guitarra' : null,
       color: index === 0 ? '#4a1d00' : index === 1 ? '#2b2b2b' : '#5c2a00'
-    })),
-    {
-      title: 'Dicas, técnicas e curiosidades',
-      subtitle: 'Blog da Cifra Cristã',
-      image: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=900&q=80',
-      songId: null,
-      tag: null,
-      color: '#6b3a00'
-    }
+    }))
   ];
+
+  const curatedSelections = useMemo(() => {
+    if (!songs.length) return [];
+
+    // Fast lookup by normalized title_search.
+    const byTitle = new Map<string, any[]>();
+    for (const song of songs) {
+      const key = normalizeSearch(song?.title_search ?? song?.title ?? '');
+      if (!key) continue;
+      const bucket = byTitle.get(key) ?? [];
+      bucket.push(song);
+      byTitle.set(key, bucket);
+    }
+
+    const pickSong = (ref: CuratedSongRef): any | null => {
+      const titleKey = normalizeSearch(ref.title);
+      const artistKey = ref.artist ? normalizeSearch(ref.artist) : null;
+      const bucket = byTitle.get(titleKey) ?? [];
+      if (!bucket.length) return null;
+
+      const candidates = artistKey
+        ? bucket.filter((song) => normalizeSearch(song?.artists?.name ?? '') === artistKey)
+        : bucket;
+
+      if (!candidates.length) return null;
+
+      // Prefer the most popular match when duplicates exist.
+      return [...candidates].sort((a, b) => (b?.views ?? 0) - (a?.views ?? 0))[0] ?? null;
+    };
+
+    return curatedSelectionDefs
+      .map((def) => {
+        const unique = new Map<string, any>();
+        for (const ref of def.songs) {
+          const song = pickSong(ref);
+          if (song?.id && !unique.has(song.id)) unique.set(song.id, song);
+        }
+        return { ...def, songsResolved: Array.from(unique.values()) };
+      })
+      .filter((def) => def.songsResolved.length >= 4);
+  }, [songs]);
 
   if (loading) {
     return (
@@ -264,14 +330,15 @@ export default function HomeScreen({ navigation }: any) {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
               {categoryTabs.map((chip) => (
                 <TouchableOpacity
-                  key={chip}
-                  style={[styles.chip, chip === activeCategory && styles.chipActive]}
+                  key={chip.value ?? 'all'}
+                  style={[styles.chip, chip.value === activeCategory && styles.chipActive]}
                   onPress={() => {
-                    if (chip === 'Mais') return navigation.navigate('Maintenance');
-                    setActiveCategory(chip);
+                    setActiveCategory(chip.value);
                   }}
                 >
-                  <Text style={chip === activeCategory ? styles.chipTextActive : styles.chipText}>{chip}</Text>
+                  <Text style={chip.value === activeCategory ? styles.chipTextActive : styles.chipText}>
+                    {chip.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -287,11 +354,7 @@ export default function HomeScreen({ navigation }: any) {
                 <TouchableOpacity
                   key={`${card.title}-${index}`}
                   style={[styles.heroCard, { backgroundColor: card.color }]}
-                  onPress={() =>
-                    card.songId
-                      ? navigation.navigate('Song', { id: card.songId })
-                      : navigation.navigate('Maintenance')
-                  }
+                  onPress={() => navigation.navigate('Song', { id: card.songId })}
                 >
                   <View style={styles.heroThumb}>
                     <Image source={{ uri: card.image }} style={styles.heroThumbImage} />
@@ -302,7 +365,7 @@ export default function HomeScreen({ navigation }: any) {
                   </View>
                   <View style={styles.heroActions}>
                     <View style={styles.heroButton}>
-                      <Text style={styles.heroButtonText}>Aprender a tocar</Text>
+                      <Text style={styles.heroButtonText}>Abrir cifra</Text>
                     </View>
                     {card.tag ? (
                       <View style={styles.heroChip}>
@@ -317,7 +380,7 @@ export default function HomeScreen({ navigation }: any) {
             <View style={styles.sectionRow}>
               <Text style={styles.sectionTitle}>Músicas em alta</Text>
               <TouchableOpacity
-                onPress={() => navigation.navigate('Songs', { category: activeCategory === 'Todos' ? null : activeCategory })}
+                onPress={() => navigation.navigate('Songs', { category: activeCategory })}
               >
                 <Text style={styles.sectionAction}>Ver mais</Text>
               </TouchableOpacity>
@@ -353,7 +416,10 @@ export default function HomeScreen({ navigation }: any) {
                     source={{ uri: chartImages[index % chartImages.length] }}
                     style={styles.artistImage}
                   />
-                  <Text style={styles.artistName}>{artist.name}</Text>
+                  <View style={styles.artistNameRow}>
+                    <Text style={styles.artistName}>{artist.name}</Text>
+                    {artist.verified_at ? <Ionicons name="checkmark-circle" size={14} color={colors.accent} /> : null}
+                  </View>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -364,88 +430,62 @@ export default function HomeScreen({ navigation }: any) {
               </View>
             ) : null}
 
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Novas aulas</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Maintenance')}>
-                <Text style={styles.sectionAction}>Ver mais</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselRow}>
-              {lessonCards.map((lesson) => (
-                <TouchableOpacity
-                  key={lesson.title}
-                  style={styles.lessonCard}
-                  onPress={() => navigation.navigate('Maintenance')}
-                >
-                  <Image source={{ uri: lesson.image }} style={styles.lessonImage} />
-                  <Text style={styles.lessonTag}>{lesson.tag}</Text>
-                  <View style={styles.lessonBody}>
-                    <Text style={styles.lessonTitle}>{lesson.title}</Text>
-                    <Text style={styles.lessonMeta}>{lesson.meta}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Cursos para você</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Maintenance')}>
-                <Text style={styles.sectionAction}>Liberar todos os cursos</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselRow}>
-              {courseCards.map((course) => (
-                <TouchableOpacity
-                  key={course.title}
-                  style={styles.courseCard}
-                  onPress={() => navigation.navigate('Maintenance')}
-                >
-                  <Image source={{ uri: course.image }} style={styles.courseImage} />
-                  <View style={styles.courseBody}>
-                    <Text style={styles.courseTitle}>{course.title}</Text>
-                    <Text style={styles.courseMeta}>{course.meta}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Leia tambem</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Maintenance')}>
-                <Text style={styles.sectionAction}>Ver mais</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.carouselRow}>
-              {articleCards.map((article) => (
-                <TouchableOpacity
-                  key={article.title}
-                  style={styles.articleCard}
-                  onPress={() => navigation.navigate('Maintenance')}
-                >
-                  <Image source={{ uri: article.image }} style={styles.articleImage} />
-                  <View style={styles.articleBody}>
-                    <Text style={styles.articleTitle}>{article.title}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity style={styles.ctaBanner} onPress={() => navigation.navigate('Maintenance')}>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1200&q=80'
-                }}
-                style={styles.ctaImage}
-              />
-              <View style={styles.ctaOverlay} />
-              <View style={styles.ctaContent}>
-                <Text style={styles.ctaTitle}>Toque mais e melhor</Text>
-                <Text style={styles.ctaText}>Assine a Cifra Cristã e tenha acesso ilimitado.</Text>
-                <View style={styles.ctaButton}>
-                  <Text style={styles.ctaButtonText}>Explorar benefícios</Text>
+            {curatedSelections.length ? (
+              <View style={{ marginTop: 22 }}>
+                <View style={styles.sectionRow}>
+                  <Text style={styles.sectionTitle}>Seleções prontas</Text>
                 </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectionRow}>
+                  {curatedSelections.map((sel, index) => (
+                    <TouchableOpacity
+                      key={sel.id}
+                      style={styles.selectionCard}
+                      onPress={() =>
+                        navigation.navigate('Selection', {
+                          title: sel.title,
+                          subtitle: sel.subtitle,
+                          songs: sel.songsResolved
+                        })
+                      }
+                      activeOpacity={0.92}
+                    >
+                      <ImageBackground
+                        source={{ uri: heroImages[index % heroImages.length] }}
+                        style={styles.selectionBg}
+                        imageStyle={styles.selectionBgImage}
+                      >
+                        <View style={styles.selectionOverlay} />
+                        <View style={styles.selectionContent}>
+                          <View style={styles.selectionTop}>
+                            <Text style={styles.selectionKicker}>SELECAO</Text>
+                            <View style={styles.selectionCountPill}>
+                              <Text style={styles.selectionCountText}>{sel.songsResolved.length} músicas</Text>
+                            </View>
+                          </View>
+
+                          <View style={styles.selectionText}>
+                            <Text style={styles.selectionTitle} numberOfLines={2}>
+                              {sel.title}
+                            </Text>
+                            <Text style={styles.selectionSubtitle} numberOfLines={2}>
+                              {sel.subtitle}
+                            </Text>
+                          </View>
+
+                          <View style={styles.selectionCtaRow}>
+                            <View style={styles.selectionButton}>
+                              <Text style={styles.selectionButtonText}>Abrir lista</Text>
+                            </View>
+                            <Text style={styles.selectionHint}>Toque e comece</Text>
+                          </View>
+                        </View>
+                      </ImageBackground>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
-            </TouchableOpacity>
+            ) : null}
           </View>
         }
         renderItem={({ item, index }) => (
@@ -597,76 +637,54 @@ const styles = StyleSheet.create({
   artistRow: { paddingHorizontal: 16 },
   artistCard: { alignItems: 'center', marginRight: 14, width: 88 },
   artistImage: { width: 70, height: 70, borderRadius: 35, marginBottom: 6 },
+  artistNameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   artistName: { textAlign: 'center', fontSize: 12, fontWeight: '600', color: colors.text },
   carouselRow: { paddingHorizontal: 16, marginBottom: 10 },
-  lessonCard: {
-    width: 240,
+
+  selectionRow: { paddingHorizontal: 16, marginTop: 6 },
+  selectionCard: {
+    width: 310,
+    height: 180,
     borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    marginRight: 12,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border
+    marginRight: 12,
+    ...shadows.card
   },
-  lessonImage: { width: '100%', height: 140 },
-  lessonTag: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: 'rgba(20,20,20,0.7)',
-    color: '#fff',
+  selectionBg: { width: '100%', height: '100%' },
+  selectionBgImage: { width: '100%', height: '100%' },
+  selectionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)'
+  },
+  selectionContent: { flex: 1, padding: 16, justifyContent: 'space-between' },
+  selectionTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  selectionKicker: {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    fontSize: 12
+  },
+  selectionCountPill: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.55)',
+    paddingVertical: 6,
     paddingHorizontal: 10,
-    paddingVertical: 4,
     borderRadius: radii.pill,
-    fontSize: 12,
-    fontWeight: '600'
+    backgroundColor: 'rgba(255,255,255,0.12)'
   },
-  lessonBody: { padding: 12, gap: 4 },
-  lessonTitle: { fontWeight: '700', color: colors.text },
-  lessonMeta: { color: colors.muted, fontSize: 12 },
-  courseCard: {
-    width: 200,
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    marginRight: 12,
-    overflow: 'hidden',
+  selectionCountText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  selectionText: { gap: 6 },
+  selectionTitle: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  selectionSubtitle: { color: 'rgba(255,255,255,0.85)', fontWeight: '700' },
+  selectionCtaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  selectionButton: {
     borderWidth: 1,
-    borderColor: colors.border
-  },
-  courseImage: { width: '100%', height: 140 },
-  courseBody: { padding: 12, gap: 4 },
-  courseTitle: { fontWeight: '700', color: colors.text },
-  courseMeta: { color: colors.muted, fontSize: 12 },
-  articleCard: {
-    width: 220,
-    borderRadius: radii.lg,
-    backgroundColor: colors.card,
-    marginRight: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.border
-  },
-  articleImage: { width: '100%', height: 130 },
-  articleBody: { padding: 12 },
-  articleTitle: { fontWeight: '700', color: colors.text, fontSize: 13 },
-  ctaBanner: {
-    marginTop: 20,
-    marginHorizontal: 16,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
-    height: 200
-  },
-  ctaImage: { width: '100%', height: '100%' },
-  ctaOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
-  ctaContent: { position: 'absolute', left: 16, bottom: 16, right: 16, gap: 8 },
-  ctaTitle: { color: '#fff', fontSize: 20, fontWeight: '700' },
-  ctaText: { color: 'rgba(255,255,255,0.9)' },
-  ctaButton: {
-    backgroundColor: colors.accent,
+    borderColor: 'rgba(255,255,255,0.6)',
     paddingVertical: 8,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: radii.pill,
-    alignSelf: 'flex-start'
+    backgroundColor: 'rgba(0,0,0,0.15)'
   },
-  ctaButtonText: { color: '#fff', fontWeight: '700', fontSize: 12 }
+  selectionButtonText: { color: '#fff', fontWeight: '900', fontSize: 12 },
+  selectionHint: { color: 'rgba(255,255,255,0.8)', fontWeight: '700', fontSize: 12 }
 });

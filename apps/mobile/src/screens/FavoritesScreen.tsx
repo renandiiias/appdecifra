@@ -3,6 +3,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -45,6 +46,9 @@ export default function FavoritesScreen({ navigation }: any) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -113,14 +117,36 @@ export default function FavoritesScreen({ navigation }: any) {
     setNewFolderName('');
   };
 
+  const openImportPlaylist = () => {
+    setImportOpen(true);
+    setImportText('');
+  };
+
+  const closeImportPlaylist = () => {
+    Keyboard.dismiss();
+    setImportOpen(false);
+    setImportText('');
+  };
+
+  const extractPlaylistId = (raw: string) => {
+    const text = String(raw ?? '').trim();
+    const m = text.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/iu);
+    return m ? m[0] : null;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>Favoritos</Text>
-          <TouchableOpacity style={styles.addFolderIcon} onPress={openCreateFolder}>
-            <Ionicons name="add" size={22} color={colors.text} />
-          </TouchableOpacity>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity style={styles.addFolderIcon} onPress={openImportPlaylist} accessibilityLabel="Importar playlist">
+              <Ionicons name="download-outline" size={20} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addFolderIcon} onPress={openCreateFolder} accessibilityLabel="Nova pasta">
+              <Ionicons name="add" size={22} color={colors.text} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.searchRow}>
@@ -281,6 +307,64 @@ export default function FavoritesScreen({ navigation }: any) {
           </KeyboardAvoidingView>
         </Pressable>
       </Modal>
+
+      <Modal visible={importOpen} transparent animationType="fade" onRequestClose={closeImportPlaylist}>
+        <Pressable style={styles.sheetBackdrop} onPress={closeImportPlaylist}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+            style={{ width: '100%' }}
+          >
+            <Pressable
+              style={styles.sheet}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
+              <View style={styles.sheetHandle} />
+              <Text style={styles.sheetTitle}>Importar playlist</Text>
+              <Text style={styles.sheetSubtitle}>Cole o link público da playlist (ou o ID).</Text>
+
+              <TextInput
+                style={styles.sheetInput}
+                placeholder="https://.../playlist/..."
+                placeholderTextColor={colors.muted}
+                value={importText}
+                onChangeText={setImportText}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="go"
+                onSubmitEditing={() => {
+                  const pid = extractPlaylistId(importText);
+                  if (!pid) return;
+                  closeImportPlaylist();
+                  navigation.navigate('SharedPlaylist', { playlistId: pid });
+                }}
+              />
+
+              <View style={styles.importActions}>
+                <TouchableOpacity style={styles.secondaryButton} onPress={closeImportPlaylist}>
+                  <Text style={styles.secondaryButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => {
+                    const pid = extractPlaylistId(importText);
+                    if (!pid) {
+                      Alert.alert('Link inválido', 'Cole um link/ID válido de playlist.');
+                      return;
+                    }
+                    closeImportPlaylist();
+                    navigation.navigate('SharedPlaylist', { playlistId: pid });
+                  }}
+                >
+                  <Text style={styles.primaryButtonText}>Abrir</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -293,6 +377,7 @@ const styles = StyleSheet.create({
   header: { padding: 16 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 24, fontWeight: '900', color: colors.text },
+  headerIcons: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   addFolderIcon: {
     width: 38,
     height: 38,
@@ -405,5 +490,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border
   },
-  secondaryButtonText: { color: colors.text, fontWeight: '900' }
+  secondaryButtonText: { color: colors.text, fontWeight: '900' },
+  importActions: { flexDirection: 'row', gap: 10, marginTop: 6 }
 });

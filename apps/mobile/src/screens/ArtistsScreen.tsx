@@ -130,7 +130,10 @@ export default function ArtistsScreen({ navigation }: any) {
                   style={styles.searchResult}
                   onPress={() => navigation.navigate('ArtistDetail', { id: item.id, name: item.name })}
                 >
-                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <View style={styles.artistRow}>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
+                    {item.verified_at ? <Ionicons name="checkmark-circle" size={16} color={colors.accent} /> : null}
+                  </View>
                   <Ionicons name="chevron-forward" size={16} color={colors.muted} />
                 </TouchableOpacity>
               );
@@ -145,7 +148,10 @@ export default function ArtistsScreen({ navigation }: any) {
                     style={styles.listItem}
                     onPress={() => navigation.navigate('ArtistDetail', { id: artist.id, name: artist.name })}
                   >
-                    <Text style={styles.cardTitle}>{artist.name}</Text>
+                    <View style={styles.artistRow}>
+                      <Text style={styles.cardTitle}>{artist.name}</Text>
+                      {artist.verified_at ? <Ionicons name="checkmark-circle" size={16} color={colors.accent} /> : null}
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -216,5 +222,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between'
   },
+  artistRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, minWidth: 0 },
   cardTitle: { fontWeight: '600', color: colors.text }
 });
