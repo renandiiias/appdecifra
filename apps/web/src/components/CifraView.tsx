@@ -8,7 +8,6 @@ import {
   transposeTokens,
   type Token
 } from '@cifras/shared';
-import { useRouter } from 'next/navigation';
 import ChordDiagram from './ChordDiagram';
 import FavoriteButton from './FavoriteButton';
 
@@ -36,7 +35,6 @@ function hashHue(value: string) {
 }
 
 export default function CifraView({ song, sharedVersion }: { song: SongData; sharedVersion?: boolean }) {
-  const router = useRouter();
   const [semitones, setSemitones] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [autoScroll, setAutoScroll] = useState(false);
@@ -138,10 +136,7 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
 
           <div className="card song-side-card">
             <button className="side-button active" type="button">
-              Videoaula
-            </button>
-            <button className="side-button" type="button" onClick={() => router.push('/manutencao')}>
-              Simplificar cifra
+              Controles da cifra
             </button>
             <button
               className={autoScroll ? 'side-button side-button--toggled' : 'side-button'}
@@ -261,11 +256,6 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
             </div>
 
             <div className="song-meta-actions">
-              <button className="pill-outline song-dropdown" type="button" onClick={() => router.push('/manutencao')}>
-                <span className="song-dropdown__check">✓</span>
-                Cifra: Principal (violão e guitarra)
-                <span className="song-dropdown__chevron">▾</span>
-              </button>
               <FavoriteButton songId={song.id} className="favorite-pill" />
             </div>
 
@@ -303,18 +293,12 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
             <div className="song-chords-header">
               <div className="song-chords-title">Acordes</div>
               <div className="song-instruments">
-                {INSTRUMENT_TABS.map((tab) => (
+                {INSTRUMENT_TABS.filter((tab) => tab === 'Violão e guitarra').map((tab) => (
                   <button
                     key={tab}
                     type="button"
                     className={tab === instrumentTab ? 'song-tab song-tab--active' : 'song-tab'}
-                    onClick={() => {
-                      if (tab !== 'Violão e guitarra') {
-                        router.push('/manutencao');
-                        return;
-                      }
-                      setInstrumentTab(tab);
-                    }}
+                    onClick={() => setInstrumentTab(tab)}
                   >
                     {tab}
                   </button>
@@ -340,11 +324,11 @@ export default function CifraView({ song, sharedVersion }: { song: SongData; sha
         <aside className="song-right">
           <div className="song-video" style={{ ['--avatar-hue' as any]: avatarHue }}>
             <div className="song-video__play">▶</div>
-            <div className="song-video__label">Vídeo</div>
+            <div className="song-video__label">Cifra</div>
           </div>
           <div className="song-right-note">
             <div className="muted">
-              Videoaula e recursos avançados ainda não estão disponíveis no MVP.
+              Ajuste tom, tamanho, rolagem e acorde usados para tocar sem interrupções.
             </div>
           </div>
         </aside>

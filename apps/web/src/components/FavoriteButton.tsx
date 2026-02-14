@@ -46,20 +46,26 @@ export default function FavoriteButton({ songId, className }: { songId: string; 
 
   if (!userId) {
     return (
-      <Link className={clsx('button', className)} href="/login">
+      <Link
+        className={clsx('button', className, 'favorite-icon-only')}
+        href="/login"
+        aria-label="Entrar para favoritar"
+        title="Entrar para favoritar"
+      >
         <span className="favorite-icon" aria-hidden>
           ♡
         </span>
-        Entrar para favoritar
       </Link>
     );
   }
 
   return (
     <button
-      className={clsx('button', className)}
+      className={clsx('button', className, 'favorite-icon-only')}
       disabled={loading}
       aria-pressed={isFavorite}
+      aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+      title={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
       onClick={async () => {
         if (isFavorite) {
           await supabase.from('favorites').delete().eq('song_id', songId).eq('user_id', userId);
@@ -73,7 +79,6 @@ export default function FavoriteButton({ songId, className }: { songId: string; 
       <span className="favorite-icon" aria-hidden>
         {isFavorite ? '♥' : '♡'}
       </span>
-      {isFavorite ? 'Cifra favoritada' : 'Favoritar cifra'}
     </button>
   );
 }

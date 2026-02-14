@@ -57,6 +57,22 @@ function getConfig(variant: DiagramVariant): Config {
 }
 
 function getBarre(positions: number[], fingers?: number[]) {
+  // A-shape barre chords: only the outer strings show the barre fret, but it still
+  // applies across the whole shape (e.g. B, Bm, Cm in A-shape family).
+  if (positions.length >= 6 && positions[0] === -1) {
+    const barreFret = positions[1] ?? 0;
+    const last = positions[positions.length - 1] ?? 0;
+    const middle = positions.slice(2, 5);
+    const frettedMiddle = middle.filter((p) => p > 0);
+    if (barreFret > 0 && last === barreFret && frettedMiddle.length >= 2) {
+      const minFret = Math.min(...positions.filter((p) => p > 0));
+      const higherCount = middle.filter((p) => p > barreFret).length;
+      if (minFret === barreFret && higherCount >= 2) {
+        return { fret: barreFret, min: 1, max: positions.length - 1, finger: 1 };
+      }
+    }
+  }
+
   // Prefer explicit finger data (finger 1 repeated across strings usually indicates a barre).
   if (fingers && fingers.length === positions.length) {
     const groups = new Map<string, { fret: number; finger: number; strings: number[] }>();
@@ -86,6 +102,7 @@ function getBarre(positions: number[], fingers?: number[]) {
   // Fallback heuristic: multiple strings fretted on the same fret.
   const fretted = positions.map((p, i) => ({ p, i })).filter((v) => v.p > 0);
   if (!fretted.length) return null;
+  const minFret = Math.min(...fretted.map((v) => v.p));
   const frets = new Map<number, number[]>();
   for (const item of fretted) {
     const list = frets.get(item.p) ?? [];
@@ -94,11 +111,46 @@ function getBarre(positions: number[], fingers?: number[]) {
   }
   const threshold = positions.length >= 6 ? 3 : 2;
   const candidates = Array.from(frets.entries())
-    .filter(([, list]) => list.length >= threshold)
+    // Avoid false barres on higher frets (e.g. B major shape has 3 notes on fret 4).
+    .filter(([fret, list]) => fret === minFret && list.length >= threshold)
     .sort((a, b) => a[0] - b[0]);
   if (!candidates.length) return null;
   const [fret, list] = candidates[0];
   return { fret, min: Math.min(...list), max: Math.max(...list), finger: 0 };
+}
+
+function inferFingers(positions: number[], barre: ReturnType<typeof getBarre>) {
+  const out = new Array(positions.length).fill(0);
+  const fretted = positions.map((p, i) => ({ fret: p, i })).filter((v) => v.fret > 0);
+  if (!fretted.length) return out;
+
+  const barreFret = barre?.fret ?? null;
+  if (barreFret) {
+    for (const item of fretted) {
+      if (item.fret === barreFret) out[item.i] = 1;
+    }
+  }
+
+  const groups = new Map<number, number[]>();
+  for (const item of fretted) {
+    if (barreFret && item.fret === barreFret) continue;
+    const list = groups.get(item.fret) ?? [];
+    list.push(item.i);
+    groups.set(item.fret, list);
+  }
+
+  const sortedFrets = Array.from(groups.keys()).sort((a, b) => a - b);
+  let finger = barreFret ? 2 : 1;
+  for (const fret of sortedFrets) {
+    const strings = (groups.get(fret) ?? []).slice().sort((a, b) => a - b);
+    for (const stringIndex of strings) {
+      if (out[stringIndex]) continue;
+      out[stringIndex] = Math.min(4, finger);
+      finger = Math.min(4, finger + 1);
+    }
+  }
+
+  return out;
 }
 
 export default function ChordDiagram({
@@ -120,11 +172,12 @@ export default function ChordDiagram({
   const cfg = getConfig(variant);
   const showCapoBoxes = variant === 'modal';
   const positions = leftHanded ? [...shape.positions].reverse() : shape.positions;
-  const fingers = shape.fingers ? (leftHanded ? [...shape.fingers].reverse() : shape.fingers) : undefined;
+  const explicitFingers = shape.fingers ? (leftHanded ? [...shape.fingers].reverse() : shape.fingers) : undefined;
   const stringCount = positions.length;
   const baseFret = shape.baseFret ?? 1;
   const baseLabel = baseFret > 1 ? String(baseFret) : '';
-  const barre = getBarre(positions, fingers);
+  const barre = getBarre(positions, explicitFingers);
+  const fingers = explicitFingers ?? inferFingers(positions, barre);
 
   const fretCount = 5;
   const stringsHeight = cfg.fretSpacing * (fretCount - 1);
@@ -209,7 +262,7 @@ export default function ChordDiagram({
           />
         ) : null}
 
-        {positions.map((pos, stringIndex) => {
+        {positions.map((pos: number, stringIndex: number) => {
           if (pos <= 0) return null;
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
           const fret = pos - baseFret + 1;
@@ -235,7 +288,7 @@ export default function ChordDiagram({
           );
         })}
 
-        {positions.map((pos, stringIndex) => {
+        {positions.map((pos: number, stringIndex: number) => {
           const x = cfg.padX + stringIndex * cfg.stringSpacing;
           if (pos === -1) {
             return (

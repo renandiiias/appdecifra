@@ -7,6 +7,9 @@
     "packages/*"
   ],
   "scripts": {
+    "clean:mobile": "rm -rf apps/mobile/.expo apps/mobile/.metro-cache apps/mobile/.cache && rm -rf node_modules/.cache .turbo",
+    "clean:mobile:hard": "rm -rf apps/mobile/node_modules",
+    "hydrate:mobile": "bash scripts/hydrate-mobile.sh",
     "dev:web": "corepack pnpm --filter @cifras/web dev",
     "dev:mobile": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start",
     "dev:mobile:clear": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" corepack pnpm --filter @cifras/mobile start:clear",

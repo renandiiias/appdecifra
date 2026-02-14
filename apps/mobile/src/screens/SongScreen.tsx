@@ -31,10 +31,45 @@ import {
 } from '../lib/offline';
 import { colors } from '../lib/theme';
 
+type SongLoadIssue = 'offline' | 'not_found' | 'error';
+
+function getErrorMessage(error: unknown) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (typeof error === 'object' && 'message' in error) return String((error as { message?: string }).message ?? '');
+  return String(error);
+}
+
+function isLikelyNetworkError(error: unknown) {
+  const message = getErrorMessage(error).toLowerCase();
+  return (
+    message.includes('failed to fetch') ||
+    message.includes('network request failed') ||
+    message.includes('network error') ||
+    message.includes('timed out') ||
+    message.includes('internet')
+  );
+}
+
+function isNotFoundError(error: unknown) {
+  const code =
+    typeof error === 'object' && error && 'code' in error ? String((error as { code?: string }).code ?? '') : '';
+  const message = getErrorMessage(error).toLowerCase();
+  return code.toUpperCase() === 'PGRST116' || message.includes('0 rows') || message.includes('no rows');
+}
+
+function classifySongLoadIssue(error: unknown): SongLoadIssue {
+  if (isLikelyNetworkError(error)) return 'offline';
+  if (isNotFoundError(error)) return 'not_found';
+  return 'error';
+}
+
 export default function SongScreen({ route, navigation }: any) {
   const { id } = route.params;
   const [song, setSong] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState<SongLoadIssue | null>(null);
+  const [reloadCount, setReloadCount] = useState(0);
   const [userId, setUserId] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState(false);
   const [folderPickerOpen, setFolderPickerOpen] = useState(false);
@@ -44,6 +79,10 @@ export default function SongScreen({ route, navigation }: any) {
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setSong(null);
+    setLoadIssue(null);
+
     supabase.auth.getSession().then(({ data }) => {
       setUserId(data.session?.user.id ?? null);
       if (data.session?.user.id) {
@@ -53,13 +92,29 @@ export default function SongScreen({ route, navigation }: any) {
 
     fetchSong(id)
       .then(async (data) => {
+        if (!data) {
+          const cached = await getCachedSong(id);
+          if (!mounted) return;
+          if (cached) {
+            setSong(cached);
+            return;
+          }
+          setLoadIssue('not_found');
+          return;
+        }
         if (!mounted) return;
         setSong(data);
         await cacheSong(data);
       })
-      .catch(async () => {
+      .catch(async (error) => {
         const cached = await getCachedSong(id);
-        if (mounted) setSong(cached);
+        if (!mounted) return;
+        if (cached) {
+          setSong(cached);
+          if (isLikelyNetworkError(error)) setLoadIssue('offline');
+          return;
+        }
+        setLoadIssue(classifySongLoadIssue(error));
       })
       .finally(() => mounted && setLoading(false));
 
@@ -70,7 +125,7 @@ export default function SongScreen({ route, navigation }: any) {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, reloadCount]);
 
   const loadFolders = async () => {
     const list = await getLocalFavoriteFolders();
@@ -139,9 +194,19 @@ export default function SongScreen({ route, navigation }: any) {
   }
 
   if (!song) {
+    const subtitle =
+      loadIssue === 'offline'
+        ? 'Sem conexão no momento. Tente novamente em instantes.'
+        : loadIssue === 'not_found'
+          ? 'Essa cifra não foi encontrada.'
+          : 'Não foi possível carregar essa cifra.';
+
     return (
       <View style={styles.container}>
-        <Text style={styles.subtitle}>Cifra indisponível offline.</Text>
+        <Text style={styles.subtitle}>{subtitle}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => setReloadCount((count) => count + 1)}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -153,7 +218,6 @@ export default function SongScreen({ route, navigation }: any) {
         isFavorite={isFavorite}
         onToggleFavorite={toggleFavorite}
         onBack={() => navigation.goBack()}
-        onOpenMaintenance={() => navigation.navigate('Maintenance')}
         onOpenTuner={() => navigation.getParent()?.navigate('Afinador')}
       />
 
@@ -171,7 +235,12 @@ export default function SongScreen({ route, navigation }: any) {
             keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             style={{ width: '100%' }}
           >
-            <Pressable style={styles.sheet} onPress={() => {}}>
+            <Pressable
+              style={styles.sheet}
+              onPress={(event) => {
+                event.stopPropagation();
+              }}
+            >
               <Text style={styles.sheetTitle}>Salvar em</Text>
               <Text style={styles.sheetSubtitle}>Escolha uma pasta para organizar seus favoritos.</Text>
 
@@ -309,6 +378,16 @@ export default function SongScreen({ route, navigation }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   subtitle: { color: colors.muted, padding: 16 },
+  retryButton: {
+    marginTop: 4,
+    marginHorizontal: 16,
+    alignSelf: 'flex-start',
+    backgroundColor: colors.text,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 16
+  },
+  retryButtonText: { color: '#fff', fontWeight: '800' },
 
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   sheet: {

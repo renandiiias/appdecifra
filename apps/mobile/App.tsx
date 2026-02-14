@@ -14,9 +14,10 @@ import ArtistDetailScreen from './src/screens/ArtistDetailScreen';
 import SongScreen from './src/screens/SongScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import FavoritesFolderScreen from './src/screens/FavoritesFolderScreen';
+import SharedPlaylistScreen from './src/screens/SharedPlaylistScreen';
 import TunerScreen from './src/screens/TunerScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import MaintenanceScreen from './src/screens/MaintenanceScreen';
+import SelectionScreen from './src/screens/SelectionScreen';
 import { colors } from './src/lib/theme';
 
 const Tab = createBottomTabNavigator();
@@ -40,8 +41,9 @@ function HomeStack() {
       <Stack.Screen name="Songs" component={SongsScreen} />
       <Stack.Screen name="Artists" component={ArtistsScreen} />
       <Stack.Screen name="ArtistDetail" component={ArtistDetailScreen} />
+      <Stack.Screen name="Selection" component={SelectionScreen} />
       <Stack.Screen name="Song" component={SongScreen} />
-      <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+      <Stack.Screen name="SharedPlaylist" component={SharedPlaylistScreen} />
     </Stack.Navigator>
   );
 }
@@ -51,7 +53,7 @@ function SearchStack() {
     <Stack.Navigator screenOptions={{ headerShown: false, headerBackTitleVisible: false }}>
       <Stack.Screen name="Search" component={SearchScreen} initialParams={{ tabRoot: true }} />
       <Stack.Screen name="Song" component={SongScreen} />
-      <Stack.Screen name="Maintenance" component={MaintenanceScreen} />
+      <Stack.Screen name="SharedPlaylist" component={SharedPlaylistScreen} />
     </Stack.Navigator>
   );
 }
@@ -62,7 +64,7 @@ function FavoritesStack() {
       <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ headerShown: false }} />
       <Stack.Screen name="FavoritesFolder" component={FavoritesFolderScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Song" component={SongScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Maintenance" component={MaintenanceScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="SharedPlaylist" component={SharedPlaylistScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

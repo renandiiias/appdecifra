@@ -3,8 +3,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   SafeAreaView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -12,6 +14,7 @@ import {
   View
 } from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import Constants from 'expo-constants';
 import { supabase } from '../lib/supabase';
 import {
   clearLocalFavoriteFolderForSong,
@@ -80,6 +83,71 @@ export default function FavoritesFolderScreen({ navigation, route }: any) {
     await supabase.from('favorites').delete().eq('song_id', songId).eq('user_id', userId);
   }, []);
 
+  const ensureLoggedIn = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user ?? null;
+    if (!user) {
+      Alert.alert('Entre para continuar', 'Faça login na aba Conta para compartilhar playlists.');
+      return null;
+    }
+    return user;
+  }, []);
+
+  const buildWebPlaylistUrl = useCallback((playlistId: string) => {
+    const explicitWebUrl = process.env.EXPO_PUBLIC_WEB_URL;
+    const baseWebUrl = explicitWebUrl ?? process.env.EXPO_PUBLIC_WEB_TUNER_URL;
+    const hostUri =
+      (Constants.expoConfig as any)?.hostUri ||
+      (Constants.expoGoConfig as any)?.debuggerHost ||
+      (Constants as any)?.manifest?.debuggerHost ||
+      (Constants as any)?.manifest2?.extra?.expoClient?.hostUri ||
+      '';
+    const host = typeof hostUri === 'string' ? hostUri.split(':')[0] : '';
+    const rawBase = explicitWebUrl
+      ? explicitWebUrl.replace(/\/$/u, '')
+      : baseWebUrl
+        ? baseWebUrl.replace(/\/afinador\/?$/u, '').replace(/\/$/u, '')
+        : null;
+    const baseUrl =
+      host && rawBase && /localhost|127\\.0\\.0\\.1/u.test(rawBase)
+        ? rawBase.replace(/localhost|127\\.0\\.0\\.1/u, host)
+        : rawBase;
+    return baseUrl ? `${baseUrl}/playlist/${playlistId}` : null;
+  }, []);
+
+  const shareFolder = useCallback(async () => {
+    if (folderId === 'all' || folderId === 'none') {
+      Alert.alert('Escolha uma pasta', 'Você pode compartilhar uma pasta específica (não “Todas” ou “Sem pasta”).');
+      return;
+    }
+
+    const user = await ensureLoggedIn();
+    if (!user) return;
+
+    // Ensure the folder exists remotely (best effort).
+    try {
+      await supabase.from('favorite_folders').upsert({ id: folderId, user_id: user.id, name: title } as any, { onConflict: 'id' } as any);
+    } catch {
+      // ignore
+    }
+
+    try {
+      const { data, error } = await (supabase as any).rpc('create_shared_playlist_for_folder', { p_folder_id: folderId });
+      if (error) throw error;
+      const playlistId = String(data ?? '').trim();
+      if (!playlistId) throw new Error('Playlist inválida.');
+
+      const url = buildWebPlaylistUrl(playlistId);
+      await Share.share({
+        message: url ? `${title}\n${url}` : `${title}\nID: ${playlistId}`
+      });
+
+      navigation.navigate('SharedPlaylist', { playlistId });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível criar o link agora. Tente novamente.');
+    }
+  }, [buildWebPlaylistUrl, ensureLoggedIn, folderId, navigation, title]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -94,6 +162,11 @@ export default function FavoritesFolderScreen({ navigation, route }: any) {
             {songs.length} {songs.length === 1 ? 'cifra' : 'cifras'}
           </Text>
         </View>
+        {folderId !== 'all' && folderId !== 'none' ? (
+          <TouchableOpacity style={styles.shareButton} onPress={shareFolder} hitSlop={10}>
+            <Ionicons name="share-outline" size={20} color={colors.text} />
+          </TouchableOpacity>
+        ) : null}
       </View>
 
       <View style={styles.searchRow}>
@@ -162,6 +235,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border
+  },
   title: { fontSize: 18, fontWeight: '900', color: colors.text },
   subtitle: { color: colors.muted, fontWeight: '700' },
 
@@ -204,4 +287,3 @@ const styles = StyleSheet.create({
     justifyContent: 'center'
   }
 });
-

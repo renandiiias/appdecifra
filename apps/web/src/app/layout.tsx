@@ -1,11 +1,17 @@
 import './globals.css';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import ThemeToggle from '@/components/ThemeToggle';
 import AuthStatus from '@/components/AuthStatus';
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Cifra Cristã',
-  description: 'Plataforma de cifras cristãs com experiência limpa e sem anúncios.'
+  description: 'Plataforma de cifras cristãs com experiência limpa e sem anúncios.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico'
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -28,10 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </form>
             <div className="navbar-right">
               <nav className="nav-links">
-                <Link href="/manutencao">Listas</Link>
-                <Link href="/manutencao">Aprenda</Link>
-                <Link href="/manutencao">Enviar cifra</Link>
-                <Link href="/manutencao">Mais</Link>
+                <Link href="/musicas">Músicas</Link>
+                <Link href="/afinador">Afinador</Link>
+                <Link href="/enviar-cifra">Enviar cifra</Link>
+                <Link href="/artistas">Artistas</Link>
               </nav>
               <div className="nav-actions">
                 <ThemeToggle />
